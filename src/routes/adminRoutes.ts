@@ -6,6 +6,32 @@ import bcrypt from 'bcryptjs'; // For password hashing (install: npm install bcr
 const adminRouter = Router();
 const prisma = new PrismaClient(); // Use the global prisma client for admin operations
 
+// Health check endpoint
+adminRouter.get('/health', (req, res) => {
+    res.json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        service: 'ai-customer-service-saas-backend'
+    });
+});
+
+// Database connection test endpoint
+adminRouter.get('/db-status', async (req, res) => {
+    try {
+        await prisma.$queryRaw`SELECT 1 as test`;
+        res.json({ 
+            status: 'connected', 
+            timestamp: new Date().toISOString() 
+        });
+    } catch (error: any) {
+        res.status(503).json({ 
+            status: 'disconnected', 
+            error: error.message,
+            timestamp: new Date().toISOString() 
+        });
+    }
+});
+
 // --- Authentication & Admin Management ---
 adminRouter.post('/auth/admin/login', async (req, res) => {
     const { email, password } = req.body;
