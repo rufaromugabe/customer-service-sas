@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { RoleService, InvitationService } from '../services/index.js';
-import { tenantContext } from '../storage.js';
+import { RoleService, InvitationService } from '../services/index.ts';
+import { tenantContext } from '../storage.ts';
 
 export class RoleController {
     getRolesByTenant = async (req: Request, res: Response) => {

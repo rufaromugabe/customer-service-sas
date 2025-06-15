@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { TenantService } from '../services/TenantService.js';
-import { tenantContext } from '../storage.js';
+import { TenantService } from '../services/TenantService.ts';
+import { tenantContext } from '../storage.ts';
 import { v4 as uuidv4 } from 'uuid';
 
 export class TenantController {

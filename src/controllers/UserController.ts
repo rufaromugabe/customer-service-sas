@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { UserService, WorkspaceService, RoleService, InvitationService } from '../services/index.js';
-import { tenantContext } from '../storage.js';
+import { UserService, WorkspaceService, RoleService, InvitationService } from '../services/index.ts';
+import { tenantContext } from '../storage.ts';
 import { PrismaClient } from '@prisma/client';
 
 export class UserController {

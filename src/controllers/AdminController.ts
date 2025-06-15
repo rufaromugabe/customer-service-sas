@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { AdminService } from '../services/AdminService.js';
+import { AdminService } from '../services/AdminService.ts';
 import { PrismaClient } from '@prisma/client';
 
 export class AdminController {

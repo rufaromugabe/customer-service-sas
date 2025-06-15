@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { tenantContext } from "./storage.js";
+import { tenantContext } from "./storage.ts";
 
 export const REQUIRE_AUTH = process.env.REQUIRE_AUTH === "true"; // Ensure it's a boolean
 

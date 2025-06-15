@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { findSimilarCustomerInteractions, aiEstimate, embedTask, EmbeddingTasks, embeddingToSQL } from '../AiUtils.js';
+import { findSimilarCustomerInteractions, aiEstimate, embedTask, EmbeddingTasks, embeddingToSQL } from '../AiUtils.ts';
 
 export class AIService {
     private tenantDB: PrismaClient;

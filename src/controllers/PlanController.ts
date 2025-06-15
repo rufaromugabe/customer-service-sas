@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { PlanService, PermissionService } from '../services/index.js';
+import { PlanService, PermissionService } from '../services/index.ts';
 import { PrismaClient } from '@prisma/client';
 
 export class PlanController {

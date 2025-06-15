@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { AIService, ConversationService } from '../services/index.js';
-import { tenantContext } from '../storage.js';
+import { AIService, ConversationService } from '../services/index.ts';
+import { tenantContext } from '../storage.ts';
 
 export class AIController {
     // AI Agents

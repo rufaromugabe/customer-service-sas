@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { ConversationService } from '../services/index.js';
-import { tenantContext } from '../storage.js';
+import { ConversationService } from '../services/index.ts';
+import { tenantContext } from '../storage.ts';
 
 export class ConversationController {
     getConversationsByWorkspace = async (req: Request, res: Response) => {

@@ -1,12 +1,12 @@
 import express from 'express';
 import { Prisma, PrismaClient } from '@prisma/client';
 import expressBasicAuth from 'express-basic-auth';
-import { tenantContext } from './storage.js';
-import { dbAuthorizer, getUnauthorizedResponse, REQUIRE_AUTH } from './basicauth.js';
+import { tenantContext } from './storage.ts';
+import { dbAuthorizer, getUnauthorizedResponse, REQUIRE_AUTH } from './basicauth.ts';
 import dotenv from 'dotenv';
-import adminRoutes from './routes/adminRoutes.js';
-import tenantRoutes from './routes/tenantRoutes.js';
-import { swaggerUi, specs } from './swagger.js';
+import adminRoutes from './routes/adminRoutes.ts';
+import tenantRoutes from './routes/tenantRoutes.ts';
+import { swaggerUi, specs } from './swagger.ts';
 
 console.log('Starting application...');
 dotenv.config();

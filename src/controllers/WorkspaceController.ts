@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { WorkspaceService } from '../services/index.js';
-import { tenantContext } from '../storage.js';
+import { WorkspaceService } from '../services/index.ts';
+import { tenantContext } from '../storage.ts';
 
 export class WorkspaceController {
     getWorkspacesByTenant = async (req: Request, res: Response) => {

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { AnalyticsService, AuditService } from '../services/index.js';
+import { AnalyticsService, AuditService } from '../services/index.ts';
 import { PrismaClient } from '@prisma/client';
-import { tenantContext } from '../storage.js';
+import { tenantContext } from '../storage.ts';
 
 export class AnalyticsController {
     private getAnalyticsService() {
