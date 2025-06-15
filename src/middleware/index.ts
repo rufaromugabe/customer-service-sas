@@ -3,8 +3,9 @@ export {
     adminAuthMiddleware, 
     tenantAuthMiddleware, 
     authenticateUser,
-    validateTenantAccess,
-    RequestWithAuth 
-} from './auth.js';
-export { validateRequest, validateQueryParams, validateParams } from './validation.js';
-export { errorHandler, notFoundHandler, asyncHandler, ErrorWithStatus } from './errorHandler.js';
+    validateTenantAccess
+} from './auth.ts';
+export type { RequestWithAuth } from './auth.ts';
+export { validateRequest, validateQueryParams, validateParams } from './validation.ts';
+export { errorHandler, notFoundHandler, asyncHandler } from './errorHandler.ts';
+export type { ErrorWithStatus } from './errorHandler.ts';

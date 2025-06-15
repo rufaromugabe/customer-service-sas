@@ -56,12 +56,11 @@ export async function embedTask(title: string, task: EmbeddingTasks) {
 export async function findSimilarCustomerInteractions(
   tenantNile: ExtendedPrismaClient, // Use the extended client type
   title: string
-) {
-  const embedding = await embedTask(title, EmbeddingTasks.SEARCH_QUERY);
+) {  const embedding = await embedTask(title, EmbeddingTasks.SEARCH_QUERY);
 
   // Optimized query using the Nile/PostgreSQL vector operators with index hint
   // This uses the vector index if available and speeds up similarity search
-  const similarInteractions =
+  const similarInteractions: unknown[] =
     await tenantNile.$queryRaw`
       /*+ IndexScan(todos todos_embedding_idx) */
       SELECT title, estimate FROM todos 
@@ -70,7 +69,7 @@ export async function findSimilarCustomerInteractions(
       ORDER BY embedding <-> ${embeddingToSQL(embedding)}::vector
       LIMIT 3`;
 
-  console.log(`found ${similarInteractions.length} similar customer interactions`);
+  console.log(`found ${(similarInteractions as any[]).length} similar customer interactions`);
 
   return similarInteractions as CustomerInteraction[];
 }

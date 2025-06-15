@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AdminController, TenantController, PlanController, AnalyticsController } from '../controllers/index.ts';
-import { authMiddleware, adminAuthMiddleware, errorHandler, asyncHandler } from '../middleware/index.js';
+import { authMiddleware, adminAuthMiddleware, errorHandler, asyncHandler } from '../middleware/index.ts';
 
 const adminRouter = Router();
 const prisma = new PrismaClient();

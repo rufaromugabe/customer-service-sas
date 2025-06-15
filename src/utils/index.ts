@@ -5,7 +5,7 @@ export {
     createdResponse, 
     noContentResponse,
     ApiResponse 
-} from './response.js';
+} from './response.ts';
 
 export { 
     getPaginationOptions, 
@@ -19,4 +19,4 @@ export {
     addDays, 
     isExpired,
     PaginationOptions 
-} from './helpers.js';
+} from './helpers.ts';

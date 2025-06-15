@@ -1,6 +1,6 @@
 // src/routes/tenantRoutes.ts
 import { Router } from 'express';
-import { tenantContext } from '../storage.js';
+import { tenantContext } from '../storage.ts';
 import { 
     TenantController, 
     UserController, 
@@ -9,13 +9,13 @@ import {
     AIController,
     ConversationController,
     AnalyticsController
-} from '../controllers/index.js';
+} from '../controllers/index.ts';
 import { 
     authenticateUser, 
     validateTenantAccess, 
     asyncHandler,
     validateRequest
-} from '../middleware/index.js';
+} from '../middleware/index.ts';
 import { body, param } from 'express-validator';
 
 const tenantRouter = Router();
