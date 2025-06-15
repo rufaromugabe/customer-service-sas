@@ -167,8 +167,7 @@ const options = {
               example: 'An error occurred',
             },
           },
-        },
-        HealthCheck: {
+        },        HealthCheck: {
           type: 'object',
           properties: {
             status: {
@@ -185,9 +184,301 @@ const options = {
             },
           },
         },
+        Workspace: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+            },
+            name: {
+              type: 'string',
+              example: 'Customer Support Workspace',
+            },
+            description: {
+              type: 'string',
+              example: 'Main workspace for customer support operations',
+            },
+            tenant_id: {
+              type: 'string',
+              format: 'uuid',
+            },
+            created: {
+              type: 'string',
+              format: 'date-time',
+            },
+            updated: {
+              type: 'string',
+              format: 'date-time',
+            },
+          },
+        },
+        Agent: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+            },
+            name: {
+              type: 'string',
+              example: 'Customer Support Bot',
+            },
+            description: {
+              type: 'string',
+              example: 'AI agent for handling customer inquiries',
+            },
+            workspace_id: {
+              type: 'string',
+              format: 'uuid',
+            },
+            model_config: {
+              type: 'object',
+              example: {
+                model: 'gpt-4',
+                temperature: 0.7,
+                max_tokens: 2048
+              },
+            },
+            status: {
+              type: 'string',
+              enum: ['ACTIVE', 'INACTIVE', 'TRAINING'],
+              example: 'ACTIVE',
+            },
+            created: {
+              type: 'string',
+              format: 'date-time',
+            },
+            updated: {
+              type: 'string',
+              format: 'date-time',
+            },
+          },
+        },
+        Conversation: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+            },
+            customer_id: {
+              type: 'string',
+              example: 'customer_123',
+            },
+            workspace_id: {
+              type: 'string',
+              format: 'uuid',
+            },
+            agent_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+            },
+            status: {
+              type: 'string',
+              enum: ['ACTIVE', 'RESOLVED', 'ESCALATED'],
+              example: 'ACTIVE',
+            },
+            created: {
+              type: 'string',
+              format: 'date-time',
+            },
+            updated: {
+              type: 'string',
+              format: 'date-time',
+            },
+          },
+        },
+        Message: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+            },
+            conversation_id: {
+              type: 'string',
+              format: 'uuid',
+            },
+            sender_type: {
+              type: 'string',
+              enum: ['CUSTOMER', 'AGENT', 'HUMAN_AGENT'],
+              example: 'CUSTOMER',
+            },
+            content: {
+              type: 'string',
+              example: 'Hello, I need help with my order',
+            },
+            metadata: {
+              type: 'object',
+              nullable: true,
+            },
+            created: {
+              type: 'string',
+              format: 'date-time',
+            },
+          },
+        },
+        KnowledgeBase: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+            },
+            name: {
+              type: 'string',
+              example: 'Product Documentation',
+            },
+            description: {
+              type: 'string',
+              example: 'Knowledge base containing product information',
+            },
+            workspace_id: {
+              type: 'string',
+              format: 'uuid',
+            },
+            created: {
+              type: 'string',
+              format: 'date-time',
+            },
+            updated: {
+              type: 'string',
+              format: 'date-time',
+            },
+          },
+        },
+        Document: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+            },
+            title: {
+              type: 'string',
+              example: 'How to reset your password',
+            },
+            content: {
+              type: 'string',
+              example: 'To reset your password, follow these steps...',
+            },
+            knowledge_base_id: {
+              type: 'string',
+              format: 'uuid',
+            },
+            created: {
+              type: 'string',
+              format: 'date-time',
+            },
+            updated: {
+              type: 'string',
+              format: 'date-time',
+            },
+          },
+        },
+        Role: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+            },
+            name: {
+              type: 'string',
+              example: 'Admin',
+            },
+            description: {
+              type: 'string',
+              example: 'Administrator role with full access',
+            },
+            tenant_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+            },
+            workspace_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+            },
+            created: {
+              type: 'string',
+              format: 'date-time',
+            },
+            updated: {
+              type: 'string',
+              format: 'date-time',
+            },
+          },
+        },
+        Feature: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+            },
+            name: {
+              type: 'string',
+              example: 'Advanced Analytics',
+            },
+            description: {
+              type: 'string',
+              example: 'Access to advanced analytics and reporting',
+            },
+            created: {
+              type: 'string',
+              format: 'date-time',
+            },
+            updated: {
+              type: 'string',
+              format: 'date-time',
+            },
+          },
+        },
+        Invitation: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+            },
+            email: {
+              type: 'string',
+              format: 'email',
+              example: 'user@example.com',
+            },
+            tenant_id: {
+              type: 'string',
+              format: 'uuid',
+            },
+            invited_by: {
+              type: 'string',
+              format: 'uuid',
+            },
+            status: {
+              type: 'string',
+              enum: ['PENDING', 'ACCEPTED', 'EXPIRED'],
+              example: 'PENDING',
+            },
+            token: {
+              type: 'string',
+              format: 'uuid',
+            },
+            created: {
+              type: 'string',
+              format: 'date-time',
+            },
+            expires_at: {
+              type: 'string',
+              format: 'date-time',
+            },
+          },
+        },
       },
-    },
-    tags: [
+    },    tags: [
       {
         name: 'Health',
         description: 'Health check and system status endpoints',
@@ -211,6 +502,38 @@ const options = {
       {
         name: 'User Authentication',
         description: 'Tenant user authentication endpoints',
+      },
+      {
+        name: 'User Management',
+        description: 'User management within tenants',
+      },
+      {
+        name: 'Workspace Management',
+        description: 'Workspace management within tenants',
+      },
+      {
+        name: 'Role Management',
+        description: 'Role and permission management',
+      },
+      {
+        name: 'AI Agents',
+        description: 'AI agent management and configuration',
+      },
+      {
+        name: 'Knowledge Base',
+        description: 'Knowledge base and document management',
+      },
+      {
+        name: 'Conversations',
+        description: 'Customer conversation management',
+      },
+      {
+        name: 'Invitations',
+        description: 'User invitation management',
+      },
+      {
+        name: 'Analytics',
+        description: 'Analytics and reporting endpoints',
       },
       {
         name: 'Customer Service',

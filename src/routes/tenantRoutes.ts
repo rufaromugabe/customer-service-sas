@@ -64,6 +64,33 @@ const analyticsController = new AnalyticsController();
  */
 tenantRouter.post('/auth/google', asyncHandler(userController.googleAuth.bind(userController)));
 
+/**
+ * @swagger
+ * /api/tenants/{tenantId}/auth/logout:
+ *   post:
+ *     tags: [User Authentication]
+ *     summary: User logout
+ *     description: Log out the current authenticated user
+ *     parameters:
+ *       - in: path
+ *         name: tenantId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Tenant ID
+ *     responses:
+ *       200:
+ *         description: Logout successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Logged out successfully
+ */
 tenantRouter.post('/auth/logout', asyncHandler(userController.logout.bind(userController)));
 
 /**
@@ -99,6 +126,51 @@ tenantRouter.post('/auth/logout', asyncHandler(userController.logout.bind(userCo
  */
 tenantRouter.get('/auth/me', authenticateUser, asyncHandler(userController.getCurrentUser.bind(userController)));
 
+/**
+ * @swagger
+ * /api/tenants/{tenantId}/auth/profile:
+ *   put:
+ *     tags: [User Authentication]
+ *     summary: Update user profile
+ *     description: Update the current authenticated user's profile information
+ *     parameters:
+ *       - in: path
+ *         name: tenantId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Tenant ID
+ *     security:
+ *       - basicAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: John Doe
+ *               family_name:
+ *                 type: string
+ *                 example: Doe
+ *               given_name:
+ *                 type: string
+ *                 example: John
+ *               picture:
+ *                 type: string
+ *                 format: uri
+ *                 example: https://example.com/avatar.jpg
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ */
 tenantRouter.put('/auth/profile', 
     authenticateUser,
     [
@@ -112,6 +184,31 @@ tenantRouter.put('/auth/profile',
 );
 
 // --- User Management (Within a Tenant) ---
+/**
+ * @swagger
+ * /api/tenants/{tenantId}/users:
+ *   get:
+ *     tags: [User Management]
+ *     summary: Get all users in tenant
+ *     description: Retrieve all users belonging to the specified tenant
+ *     parameters:
+ *       - in: path
+ *         name: tenantId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Tenant ID
+ *     responses:
+ *       200:
+ *         description: Users retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/User'
+ */
 tenantRouter.get('/:tenantId/users', 
     [param('tenantId').isUUID()],
     validateRequest,
@@ -119,6 +216,50 @@ tenantRouter.get('/:tenantId/users',
     asyncHandler(userController.getTenantUsers.bind(userController))
 );
 
+/**
+ * @swagger
+ * /api/tenants/{tenantId}/users:
+ *   post:
+ *     tags: [User Management]
+ *     summary: Add user to tenant
+ *     description: Add a new user to the specified tenant
+ *     parameters:
+ *       - in: path
+ *         name: tenantId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Tenant ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *               userId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Optional existing user ID
+ *               roles:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 description: Array of role IDs to assign
+ *     responses:
+ *       201:
+ *         description: User added to tenant successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ */
 tenantRouter.post('/:tenantId/users', 
     [
         param('tenantId').isUUID(),
@@ -131,6 +272,38 @@ tenantRouter.post('/:tenantId/users',
     asyncHandler(userController.addUserToTenant.bind(userController))
 );
 
+/**
+ * @swagger
+ * /api/tenants/{tenantId}/users/{id}:
+ *   get:
+ *     tags: [User Management]
+ *     summary: Get specific user in tenant
+ *     description: Retrieve a specific user by ID within the tenant
+ *     parameters:
+ *       - in: path
+ *         name: tenantId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Tenant ID
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       404:
+ *         description: User not found
+ */
 tenantRouter.get('/:tenantId/users/:id', 
     [
         param('tenantId').isUUID(),
@@ -407,23 +580,46 @@ tenantRouter.post('/:tenantId/invitations',
     asyncHandler(tenantController.createInvitation.bind(tenantController))
 );
 
-// Public endpoint for invitation details (does not require tenant context via path)
-tenantRouter.get('/invitations/:token', 
-    [param('token').isUUID()],
-    validateRequest,
-    asyncHandler(tenantController.getInvitationDetails.bind(tenantController))
-);
-
-// Public endpoint for accepting invitation (does not require tenant context via path)
-tenantRouter.post('/invitations/:token/accept', 
-    [
-        param('token').isUUID(),
-        body('userId').optional().isUUID()
-    ],
-    validateRequest,
-    asyncHandler(tenantController.acceptInvitation.bind(tenantController))
-);
-
+/**
+ * @swagger
+ * /api/tenants/{tenantId}/invitations/{id}:
+ *   delete:
+ *     tags: [Invitation Management]
+ *     summary: Cancel an invitation
+ *     description: Revoke an existing invitation by ID
+ *     parameters:
+ *       - in: path
+ *         name: tenantId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Tenant ID
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Invitation ID
+ *     responses:
+ *       200:
+ *         description: Invitation canceled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Invitation canceled
+ *       404:
+ *         description: Invitation not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 tenantRouter.delete('/:tenantId/invitations/:id', 
     [
         param('tenantId').isUUID(),
@@ -434,6 +630,46 @@ tenantRouter.delete('/:tenantId/invitations/:id',
     asyncHandler(tenantController.cancelInvitation.bind(tenantController))
 );
 
+/**
+ * @swagger
+ * /api/tenants/{tenantId}/invitations/{id}/resend:
+ *   post:
+ *     tags: [Invitation Management]
+ *     summary: Resend an invitation
+ *     description: Resend an existing invitation by ID
+ *     parameters:
+ *       - in: path
+ *         name: tenantId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Tenant ID
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Invitation ID
+ *     responses:
+ *       200:
+ *         description: Invitation resent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Invitation resent
+ *       404:
+ *         description: Invitation not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 tenantRouter.post('/:tenantId/invitations/:id/resend', 
     [
         param('tenantId').isUUID(),
