@@ -10,14 +10,44 @@ datasource db {
 }
 
 model admins {
-  id            String    @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
-  email         String    @unique
-  password_hash String
-  name          String?
-  created       DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  updated       DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  deleted       DateTime? @db.Timestamp(6)
+  id               String          @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  email            String          @unique
+  password_hash    String
+  name             String?
+  role             String          @default("admin") // admin, super_admin
+  is_active        Boolean         @default(true)
+  last_login_at    DateTime?       @db.Timestamp(6)
+  last_login_ip    String?
+  password_changed DateTime?       @db.Timestamp(6)
+  failed_attempts  Int             @default(0)
+  locked_until     DateTime?       @db.Timestamp(6)
+  created          DateTime        @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  updated          DateTime        @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  deleted          DateTime?       @db.Timestamp(6)
+  
+  // Relations
+  admin_tokens     admin_tokens[]
 
+  @@schema("public")
+}
+
+model admin_tokens {
+  id         String    @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  admin_id   String    @db.Uuid
+  token_type String    // access_token, refresh_token
+  jti        String    @unique // JWT ID for token identification
+  expires_at DateTime  @db.Timestamp(6)
+  revoked_at DateTime? @db.Timestamp(6)
+  created_at DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  ip_address String?
+  user_agent String?
+  
+  // Relations
+  admin      admins    @relation(fields: [admin_id], references: [id], onDelete: Cascade)
+
+  @@index([admin_id])
+  @@index([jti])
+  @@index([expires_at])
   @@schema("public")
 }
 
@@ -252,29 +282,89 @@ model audit_logs {
   id          String   @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
   tenant_id   String   @db.Uuid
   user_id     String?  @db.Uuid
+  admin_id    String?  @db.Uuid
   action      String
   entity_type String
   entity_id   String?  @db.Uuid
   timestamp   DateTime @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
   details     Json?
-  log_type    String
+  log_type    String   // user, admin, system, security
+  ip_address  String?
+  user_agent  String?
+  session_id  String?
+  risk_level  String?  // low, medium, high, critical
 
   @@id([tenant_id, id])
+  @@index([user_id])
+  @@index([admin_id])
+  @@index([action])
+  @@index([timestamp])
+  @@index([log_type])
+  @@index([risk_level])
   @@schema("users")
 }
 
+// System-level security events (for admin actions)
+model admin_security_events {
+  id          String   @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  event_type  String   // login_success, login_failure, password_change, account_locked, token_refresh, etc.
+  admin_id    String?  @db.Uuid
+  ip_address  String?
+  user_agent  String?
+  details     Json?    // Additional event-specific data
+  risk_score  Int?     // 1-100 risk assessment
+  blocked     Boolean  @default(false)
+  timestamp   DateTime @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+
+  @@index([event_type])
+  @@index([admin_id])
+  @@index([ip_address])
+  @@index([timestamp])
+  @@index([risk_score])
+  @@schema("public")
+}
+
+// Tenant-level security events (for user actions within tenants)
+model security_events {
+  id          String   @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  tenant_id   String   @db.Uuid
+  event_type  String   // login_success, login_failure, password_change, account_locked, etc.
+  user_id     String?  @db.Uuid
+  ip_address  String?
+  user_agent  String?
+  details     Json?    // Additional event-specific data
+  risk_score  Int?     // 1-100 risk assessment
+  blocked     Boolean  @default(false)
+  timestamp   DateTime @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  
+  tenant      tenants  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@id([tenant_id, id])
+  @@index([event_type])
+  @@index([user_id])
+  @@index([ip_address])
+  @@index([timestamp])
+  @@index([risk_score])
+  @@schema("public")
+}
+
 model tenant_users {
-  tenant_id String    @db.Uuid
-  user_id   String    @db.Uuid
-  created   DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  updated   DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  deleted   DateTime? @db.Timestamp(6)
-  roles     String[]
-  email     String?
+  tenant_id      String    @db.Uuid
+  user_id        String    @db.Uuid
+  created        DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  updated        DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  deleted        DateTime? @db.Timestamp(6)
+  roles          String[]
+  email          String?
+  is_active      Boolean   @default(true)
+  invited_by     String?   @db.Uuid
+  joined_at      DateTime? @db.Timestamp(6)
+  last_active_at DateTime? @db.Timestamp(6)
 
   @@id([tenant_id, user_id])
   @@index([tenant_id], map: "tenant_users_tenant_id")
   @@index([user_id], map: "tenant_users_user_id")
+  @@index([is_active])
   @@schema("users")
 }
 
@@ -289,6 +379,9 @@ model users {
   email          String?
   picture        String?
   email_verified DateTime? @db.Timestamp(6)
+  last_login_at  DateTime? @db.Timestamp(6)
+  last_login_ip  String?
+  is_active      Boolean   @default(true)
 
   @@schema("users")
 }

@@ -1,4 +1,43 @@
-# Getting Started Locally
+# AI Customer Service SaaS Backend
+
+Multi-tenant AI customer service backend with **Nile Auth** integration, enhanced security, and enterprise-grade authentication.
+
+## 🚀 New: Enhanced Security & Authentication
+
+This backend now features **dual authentication systems** with enterprise-grade security:
+
+### 🔐 User Authentication (Nile Auth)
+- 🍪 Session-based authentication with secure HTTP-only cookies
+- 🏢 Multi-tenant isolation at the auth layer  
+- 🔑 OAuth integrations (Google, GitHub, etc.)
+- 📧 Magic link authentication
+- 🛡️ Built-in CSRF protection
+- 📱 Password reset and email verification
+
+### 👨‍💼 Admin Authentication (JWT-based)
+- 🎫 JWT access & refresh tokens with secure cookies
+- 🔒 Role-based access control (admin, super_admin)
+- 🚫 Rate limiting & brute-force protection
+- 🔄 Automatic token refresh
+- 🔐 Enhanced session security
+
+### 🛡️ Security Features
+- 🚦 Configurable rate limiting per endpoint type
+- 🛡️ Security headers via Helmet.js
+- 🌐 CORS protection with origin validation
+- 🧹 Input sanitization against injection attacks
+- 📏 Request size limiting (10MB default)
+- 📊 IP tracking for audit logging
+- ⚠️ Security-conscious error responses
+
+**Quick Start:**
+1. **Users:** Sign up: `POST /api/auth/signup` → Sign in: `POST /api/auth/signin`
+2. **Admins:** Login: `POST /api/auth/admin/login` → Access with JWT cookies
+3. Access protected routes with session/JWT cookies
+
+See [NILE_AUTH_MIGRATION.md](./NILE_AUTH_MIGRATION.md) for complete migration guide.
+
+## Getting Started Locally
 
 1.  **Clone the repository (or create files manually):**
     ```bash
@@ -18,7 +57,16 @@
 
 3.  **Create `.env` file:** Copy content from `.env.example` and fill in your NilePostgres `DATABASE_URL` and AI API credentials.
 
-4.  **Configure Prisma:**
+4.  **Configure Nile Auth:** Add Nile configuration to your `.env` file:
+    ```bash
+    # Nile Auth Configuration  
+    NILE_API_URL=https://api.thenile.dev
+    NILE_WORKSPACE_ID=your-workspace-id
+    NILE_DATABASE_ID=your-database-id
+    NILE_API_TOKEN=your-api-token
+    ```
+
+5.  **Configure Prisma:**
     *   Create the `prisma` directory and `schema.prisma` file.
     *   Run Prisma commands:
         ```bash
@@ -27,7 +75,7 @@
         ```
         The `db push` command will create the tables in your NilePostgres database based on the `schema.prisma`.
 
-5.  **Run the application:**
+6.  **Run the application:**
     ```bash
     npm run dev
     ```

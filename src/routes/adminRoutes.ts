@@ -1,10 +1,28 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AdminController, TenantController, PlanController, AnalyticsController } from '../controllers/index.ts';
-import { authMiddleware, adminAuthMiddleware, errorHandler, asyncHandler } from '../middleware/index.ts';
+import { 
+    authMiddleware, 
+    adminAuthMiddleware, 
+    errorHandler, 
+    asyncHandler, 
+    adminJWTMiddleware,
+    adminLoginRateLimit,
+    adminLoginSlowDown,
+    adminAPIRateLimit,
+    requireSuperAdmin,
+    securityHeaders,
+    trackClientInfo,
+    sensitiveOperationSecurity
+} from '../middleware/index.ts';
 
 const adminRouter = Router();
 const prisma = new PrismaClient();
+
+// Apply security headers and client tracking to all admin routes
+adminRouter.use(securityHeaders);
+adminRouter.use(trackClientInfo);
+adminRouter.use(adminAPIRateLimit);
 
 // Initialize controllers
 const adminController = new AdminController(prisma);
@@ -148,7 +166,11 @@ adminRouter.get('/db-status', async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-adminRouter.post('/auth/admin/login', asyncHandler(adminController.loginAdmin));
+adminRouter.post('/auth/admin/login', 
+    adminLoginRateLimit, 
+    adminLoginSlowDown, 
+    asyncHandler(adminController.loginAdmin)
+);
 /**
  * @swagger
  * /api/auth/admin/logout:
@@ -178,7 +200,8 @@ adminRouter.post('/auth/admin/logout', asyncHandler(adminController.logoutAdmin)
  *     summary: Get current admin profile
  *     description: Retrieve the current authenticated admin's profile information
  *     security:
- *       - basicAuth: []
+ *       - bearerAuth: []
+ *       - cookieAuth: []
  *     responses:
  *       200:
  *         description: Admin profile retrieved successfully
@@ -189,7 +212,22 @@ adminRouter.post('/auth/admin/logout', asyncHandler(adminController.logoutAdmin)
  *       401:
  *         description: Unauthorized
  */
-adminRouter.get('/auth/admin/me', authMiddleware, asyncHandler(adminController.getCurrentAdmin));
+adminRouter.get('/auth/admin/me', adminJWTMiddleware, asyncHandler(adminController.getCurrentAdmin));
+
+/**
+ * @swagger
+ * /api/auth/admin/refresh:
+ *   post:
+ *     tags: [Admin Authentication]
+ *     summary: Refresh admin access token
+ *     description: Use refresh token to get a new access token
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ *       401:
+ *         description: Invalid or expired refresh token
+ */
+adminRouter.post('/auth/admin/refresh', asyncHandler(adminController.refreshToken));
 
 // Admin CRUD operations
 /**
@@ -211,7 +249,7 @@ adminRouter.get('/auth/admin/me', authMiddleware, asyncHandler(adminController.g
  *               items:
  *                 $ref: '#/components/schemas/Admin'
  */
-adminRouter.get('/admins', adminAuthMiddleware, asyncHandler(adminController.getAllAdmins));
+adminRouter.get('/admins', adminJWTMiddleware, asyncHandler(adminController.getAllAdmins));
 
 /**
  * @swagger
@@ -251,7 +289,12 @@ adminRouter.get('/admins', adminAuthMiddleware, asyncHandler(adminController.get
  *             schema:
  *               $ref: '#/components/schemas/Admin'
  */
-adminRouter.post('/admins', adminAuthMiddleware, asyncHandler(adminController.createAdmin));
+adminRouter.post('/admins', 
+    adminJWTMiddleware, 
+    requireSuperAdmin, 
+    ...sensitiveOperationSecurity, 
+    asyncHandler(adminController.createAdmin)
+);
 
 /**
  * @swagger
@@ -280,7 +323,7 @@ adminRouter.post('/admins', adminAuthMiddleware, asyncHandler(adminController.cr
  *       404:
  *         description: Admin not found
  */
-adminRouter.get('/admins/:id', adminAuthMiddleware, asyncHandler(adminController.getAdminById));
+adminRouter.get('/admins/:id', adminJWTMiddleware, asyncHandler(adminController.getAdminById));
 
 /**
  * @swagger
@@ -321,7 +364,11 @@ adminRouter.get('/admins/:id', adminAuthMiddleware, asyncHandler(adminController
  *             schema:
  *               $ref: '#/components/schemas/Admin'
  */
-adminRouter.put('/admins/:id', adminAuthMiddleware, asyncHandler(adminController.updateAdmin));
+adminRouter.put('/admins/:id', 
+    adminJWTMiddleware, 
+    ...sensitiveOperationSecurity, 
+    asyncHandler(adminController.updateAdmin)
+);
 
 /**
  * @swagger
@@ -329,9 +376,10 @@ adminRouter.put('/admins/:id', adminAuthMiddleware, asyncHandler(adminController
  *   delete:
  *     tags: [Admin Management]
  *     summary: Delete admin
- *     description: Delete an admin user
+ *     description: Delete an admin user (Super Admin only)
  *     security:
- *       - basicAuth: []
+ *       - bearerAuth: []
+ *       - cookieAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -345,8 +393,15 @@ adminRouter.put('/admins/:id', adminAuthMiddleware, asyncHandler(adminController
  *         description: Admin deleted successfully
  *       404:
  *         description: Admin not found
+ *       403:
+ *         description: Super admin access required
  */
-adminRouter.delete('/admins/:id', adminAuthMiddleware, asyncHandler(adminController.deleteAdmin));
+adminRouter.delete('/admins/:id', 
+    adminJWTMiddleware, 
+    requireSuperAdmin, 
+    ...sensitiveOperationSecurity, 
+    asyncHandler(adminController.deleteAdmin)
+);
 
 // --- Organization Management ---
 /**
@@ -372,7 +427,7 @@ adminRouter.delete('/admins/:id', adminAuthMiddleware, asyncHandler(adminControl
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-adminRouter.get('/organizations', adminAuthMiddleware, asyncHandler(tenantController.getAllTenants));
+adminRouter.get('/organizations', adminJWTMiddleware, asyncHandler(tenantController.getAllTenants));
 
 /**
  * @swagger
@@ -421,13 +476,13 @@ adminRouter.get('/organizations', adminAuthMiddleware, asyncHandler(tenantContro
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-adminRouter.post('/organizations', adminAuthMiddleware, asyncHandler(tenantController.createTenant));
-adminRouter.get('/organizations/:id', adminAuthMiddleware, asyncHandler(tenantController.getTenantById));
-adminRouter.put('/organizations/:id', adminAuthMiddleware, asyncHandler(tenantController.updateTenant));
-adminRouter.delete('/organizations/:id', adminAuthMiddleware, asyncHandler(tenantController.deleteTenant));
-adminRouter.post('/organizations/:id/activate', adminAuthMiddleware, asyncHandler(tenantController.activateTenant));
-adminRouter.post('/organizations/:id/deactivate', adminAuthMiddleware, asyncHandler(tenantController.deactivateTenant));
-adminRouter.get('/organizations/:id/stats', adminAuthMiddleware, asyncHandler(tenantController.getTenantStats));
+adminRouter.post('/organizations', adminJWTMiddleware, asyncHandler(tenantController.createTenant));
+adminRouter.get('/organizations/:id', adminJWTMiddleware, asyncHandler(tenantController.getTenantById));
+adminRouter.put('/organizations/:id', adminJWTMiddleware, asyncHandler(tenantController.updateTenant));
+adminRouter.delete('/organizations/:id', adminJWTMiddleware, requireSuperAdmin, ...sensitiveOperationSecurity, asyncHandler(tenantController.deleteTenant));
+adminRouter.post('/organizations/:id/activate', adminJWTMiddleware, asyncHandler(tenantController.activateTenant));
+adminRouter.post('/organizations/:id/deactivate', adminJWTMiddleware, asyncHandler(tenantController.deactivateTenant));
+adminRouter.get('/organizations/:id/stats', adminJWTMiddleware, asyncHandler(tenantController.getTenantStats));
 
 // --- Plan & Feature Management ---
 /**
@@ -449,7 +504,7 @@ adminRouter.get('/organizations/:id/stats', adminAuthMiddleware, asyncHandler(te
  *               items:
  *                 $ref: '#/components/schemas/Plan'
  */
-adminRouter.get('/plans', adminAuthMiddleware, asyncHandler(planController.getAllPlans));
+adminRouter.get('/plans', adminJWTMiddleware, asyncHandler(planController.getAllPlans));
 
 /**
  * @swagger
@@ -488,7 +543,7 @@ adminRouter.get('/plans', adminAuthMiddleware, asyncHandler(planController.getAl
  *             schema:
  *               $ref: '#/components/schemas/Plan'
  */
-adminRouter.post('/plans', adminAuthMiddleware, asyncHandler(planController.createPlan));
+adminRouter.post('/plans', adminJWTMiddleware, asyncHandler(planController.createPlan));
 
 /**
  * @swagger
@@ -498,7 +553,8 @@ adminRouter.post('/plans', adminAuthMiddleware, asyncHandler(planController.crea
  *     summary: Get plan by ID
  *     description: Retrieve a specific plan by its ID
  *     security:
- *       - basicAuth: []
+ *       - bearerAuth: []
+ *       - cookieAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -517,7 +573,7 @@ adminRouter.post('/plans', adminAuthMiddleware, asyncHandler(planController.crea
  *       404:
  *         description: Plan not found
  */
-adminRouter.get('/plans/:id', adminAuthMiddleware, asyncHandler(planController.getPlanById));
+adminRouter.get('/plans/:id', adminJWTMiddleware, asyncHandler(planController.getPlanById));
 
 /**
  * @swagger
@@ -558,7 +614,7 @@ adminRouter.get('/plans/:id', adminAuthMiddleware, asyncHandler(planController.g
  *             schema:
  *               $ref: '#/components/schemas/Plan'
  */
-adminRouter.put('/plans/:id', adminAuthMiddleware, asyncHandler(planController.updatePlan));
+adminRouter.put('/plans/:id', adminJWTMiddleware, asyncHandler(planController.updatePlan));
 
 /**
  * @swagger
@@ -568,7 +624,8 @@ adminRouter.put('/plans/:id', adminAuthMiddleware, asyncHandler(planController.u
  *     summary: Delete plan
  *     description: Delete a subscription plan
  *     security:
- *       - basicAuth: []
+ *       - bearerAuth: []
+ *       - cookieAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -583,7 +640,7 @@ adminRouter.put('/plans/:id', adminAuthMiddleware, asyncHandler(planController.u
  *       404:
  *         description: Plan not found
  */
-adminRouter.delete('/plans/:id', adminAuthMiddleware, asyncHandler(planController.deletePlan));
+adminRouter.delete('/plans/:id', adminJWTMiddleware, asyncHandler(planController.deletePlan));
 
 /**
  * @swagger
@@ -604,7 +661,7 @@ adminRouter.delete('/plans/:id', adminAuthMiddleware, asyncHandler(planControlle
  *               items:
  *                 $ref: '#/components/schemas/Feature'
  */
-adminRouter.get('/features', adminAuthMiddleware, asyncHandler(planController.getAllFeatures));
+adminRouter.get('/features', adminJWTMiddleware, asyncHandler(planController.getAllFeatures));
 
 /**
  * @swagger
@@ -614,7 +671,8 @@ adminRouter.get('/features', adminAuthMiddleware, asyncHandler(planController.ge
  *     summary: Create new feature
  *     description: Create a new feature
  *     security:
- *       - basicAuth: []
+ *       - bearerAuth: []
+ *       - cookieAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -638,24 +696,24 @@ adminRouter.get('/features', adminAuthMiddleware, asyncHandler(planController.ge
  *             schema:
  *               $ref: '#/components/schemas/Feature'
  */
-adminRouter.post('/features', adminAuthMiddleware, asyncHandler(planController.createFeature));
-adminRouter.get('/features/:id', adminAuthMiddleware, asyncHandler(planController.getFeatureById));
-adminRouter.put('/features/:id', adminAuthMiddleware, asyncHandler(planController.updateFeature));
-adminRouter.delete('/features/:id', adminAuthMiddleware, asyncHandler(planController.deleteFeature));
+adminRouter.post('/features', adminJWTMiddleware, asyncHandler(planController.createFeature));
+adminRouter.get('/features/:id', adminJWTMiddleware, asyncHandler(planController.getFeatureById));
+adminRouter.put('/features/:id', adminJWTMiddleware, asyncHandler(planController.updateFeature));
+adminRouter.delete('/features/:id', adminJWTMiddleware, asyncHandler(planController.deleteFeature));
 
-adminRouter.post('/plans/:planId/features', adminAuthMiddleware, asyncHandler(planController.addFeatureToPlan));
-adminRouter.delete('/plans/:planId/features/:featureId', adminAuthMiddleware, asyncHandler(planController.removeFeatureFromPlan));
+adminRouter.post('/plans/:planId/features', adminJWTMiddleware, asyncHandler(planController.addFeatureToPlan));
+adminRouter.delete('/plans/:planId/features/:featureId', adminJWTMiddleware, asyncHandler(planController.removeFeatureFromPlan));
 
 // --- Global Permissions ---
-adminRouter.get('/permissions/organizational', adminAuthMiddleware, asyncHandler(planController.getOrganizationalPermissions));
-adminRouter.post('/permissions/organizational', adminAuthMiddleware, asyncHandler(planController.createOrganizationalPermission));
-adminRouter.get('/permissions/workspace', adminAuthMiddleware, asyncHandler(planController.getWorkspacePermissions));
-adminRouter.post('/permissions/workspace', adminAuthMiddleware, asyncHandler(planController.createWorkspacePermission));
+adminRouter.get('/permissions/organizational', adminJWTMiddleware, asyncHandler(planController.getOrganizationalPermissions));
+adminRouter.post('/permissions/organizational', adminJWTMiddleware, asyncHandler(planController.createOrganizationalPermission));
+adminRouter.get('/permissions/workspace', adminJWTMiddleware, asyncHandler(planController.getWorkspacePermissions));
+adminRouter.post('/permissions/workspace', adminJWTMiddleware, asyncHandler(planController.createWorkspacePermission));
 
 // --- System Analytics & Audit ---
-adminRouter.get('/analytics/system-usage', adminAuthMiddleware, asyncHandler(analyticsController.getSystemUsage));
-adminRouter.get('/analytics/organizations', adminAuthMiddleware, asyncHandler(analyticsController.getOrganizationMetrics));
-adminRouter.get('/audit-logs/system', adminAuthMiddleware, asyncHandler(analyticsController.getSystemAuditLogs));
+adminRouter.get('/analytics/system-usage', adminJWTMiddleware, asyncHandler(analyticsController.getSystemUsage));
+adminRouter.get('/analytics/organizations', adminJWTMiddleware, asyncHandler(analyticsController.getOrganizationMetrics));
+adminRouter.get('/audit-logs/system', adminJWTMiddleware, asyncHandler(analyticsController.getSystemAuditLogs));
 
 // Error handling middleware
 adminRouter.use(errorHandler);

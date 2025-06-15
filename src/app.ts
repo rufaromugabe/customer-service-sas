@@ -1,12 +1,22 @@
 import express from 'express';
 import { Prisma, PrismaClient } from '@prisma/client';
 import expressBasicAuth from 'express-basic-auth';
+import cookieParser from 'cookie-parser';
 import { tenantContext } from './storage.ts';
 import { dbAuthorizer, getUnauthorizedResponse, REQUIRE_AUTH } from './basicauth.ts';
 import dotenv from 'dotenv';
 import adminRoutes from './routes/adminRoutes.ts';
 import tenantRoutes from './routes/tenantRoutes.ts';
+import nileAuthRoutes from './routes/nileAuthRoutes.ts';
 import { swaggerUi, specs } from './swagger.ts';
+import { 
+  securityHeaders, 
+  corsMiddleware, 
+  generalRateLimit, 
+  sanitizeInput, 
+  limitRequestSize, 
+  trackClientInfo 
+} from './middleware/index.ts';
 
 console.log('Starting application...');
 dotenv.config();
@@ -22,9 +32,18 @@ console.log('Prisma client created successfully');
 const app = express();
 console.log('Express app created');
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-console.log('Middleware configured...');
+// Apply security middleware early
+app.use(corsMiddleware);
+app.use(securityHeaders);
+app.use(generalRateLimit);
+app.use(trackClientInfo);
+app.use(sanitizeInput);
+app.use(limitRequestSize);
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
+console.log('Security middleware and parsers configured...');
 
 /**
  * Creates a Prisma Client Extension which sets Nile tenant context
@@ -114,6 +133,10 @@ if (REQUIRE_AUTH) {
 
 // --- API Routes ---
 console.log('Setting up API routes...');
+
+// Nile Auth routes (new authentication system)
+app.use('/api/auth', nileAuthRoutes);
+
 app.use('/api', adminRoutes); // System Admin APIs (no tenantId in path)
 app.use('/api/tenants/:tenantId', tenantRoutes); // Tenant-specific APIs with tenantId parameter
 

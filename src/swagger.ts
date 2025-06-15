@@ -18,13 +18,31 @@ const options = {
         url: 'http://localhost:3001',
         description: 'Development server',
       },
-    ],
-    components: {
+    ],    components: {
       securitySchemes: {
         basicAuth: {
           type: 'http',
           scheme: 'basic',
+          description: 'Legacy basic authentication (deprecated)'
         },
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'JWT Bearer token authentication for admin routes'
+        },
+        cookieAuth: {
+          type: 'apiKey',
+          in: 'cookie',
+          name: 'admin_access_token',
+          description: 'JWT admin authentication via secure cookie'
+        },
+        nileSession: {
+          type: 'apiKey',
+          in: 'cookie',
+          name: 'nile-session',
+          description: 'Nile Auth session cookie for user authentication'
+        }
       },
       schemas: {
         Tenant: {
@@ -477,11 +495,14 @@ const options = {
             },
           },
         },
-      },
-    },    tags: [
+      },    },    tags: [
       {
         name: 'Health',
         description: 'Health check and system status endpoints',
+      },
+      {
+        name: 'Authentication',
+        description: 'Nile Auth authentication endpoints (sign in, sign up, profile)',
       },
       {
         name: 'Admin Authentication',

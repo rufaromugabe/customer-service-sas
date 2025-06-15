@@ -11,8 +11,13 @@ import {
     AnalyticsController
 } from '../controllers/index.ts';
 import { 
+    // Legacy auth middleware (keeping for backwards compatibility)
     authenticateUser, 
     validateTenantAccess, 
+    // New Nile Auth middleware
+    nileAuthMiddleware,
+    nileTenantMiddleware,
+    nileOptionalAuthMiddleware,
     asyncHandler,
     validateRequest
 } from '../middleware/index.ts';
@@ -39,13 +44,17 @@ const conversationController = new ConversationController();
 const analyticsController = new AnalyticsController();
 
 // --- Authentication & Profile (User-level) ---
+// NOTE: Authentication routes have been moved to /api/auth/*
+// These routes are kept for backwards compatibility but deprecated
+
 /**
  * @swagger
  * /api/tenants/{tenantId}/auth/google:
  *   post:
+ *     deprecated: true
  *     tags: [User Authentication]
- *     summary: Google OAuth login (placeholder)
- *     description: Placeholder endpoint for Google OAuth login flow
+ *     summary: Google OAuth login (DEPRECATED - use /api/auth/google)
+ *     description: This endpoint is deprecated. Use /api/auth/google instead.
  *     parameters:
  *       - in: path
  *         name: tenantId
@@ -55,22 +64,24 @@ const analyticsController = new AnalyticsController();
  *           format: uuid
  *         description: Tenant ID
  *     responses:
- *       501:
- *         description: Not implemented
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *       301:
+ *         description: Moved permanently - use /api/auth/google
  */
-tenantRouter.post('/auth/google', asyncHandler(userController.googleAuth.bind(userController)));
+tenantRouter.post('/auth/google', (req, res) => {
+    res.status(301).json({ 
+        message: 'This endpoint has been moved to /api/auth/google',
+        redirect: '/api/auth/google'
+    });
+});
 
 /**
  * @swagger
  * /api/tenants/{tenantId}/auth/logout:
  *   post:
+ *     deprecated: true
  *     tags: [User Authentication]
- *     summary: User logout
- *     description: Log out the current authenticated user
+ *     summary: User logout (DEPRECATED - use /api/auth/signout)
+ *     description: This endpoint is deprecated. Use /api/auth/signout instead.
  *     parameters:
  *       - in: path
  *         name: tenantId
@@ -80,26 +91,24 @@ tenantRouter.post('/auth/google', asyncHandler(userController.googleAuth.bind(us
  *           format: uuid
  *         description: Tenant ID
  *     responses:
- *       200:
- *         description: Logout successful
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Logged out successfully
+ *       301:
+ *         description: Moved permanently - use /api/auth/signout
  */
-tenantRouter.post('/auth/logout', asyncHandler(userController.logout.bind(userController)));
+tenantRouter.post('/auth/logout', (req, res) => {
+    res.status(301).json({ 
+        message: 'This endpoint has been moved to /api/auth/signout',
+        redirect: '/api/auth/signout'
+    });
+});
 
 /**
  * @swagger
  * /api/tenants/{tenantId}/auth/me:
  *   get:
+ *     deprecated: true
  *     tags: [User Authentication]
- *     summary: Get current user profile
- *     description: Retrieve the current authenticated user's profile information
+ *     summary: Get current user profile (DEPRECATED - use /api/auth/me)
+ *     description: This endpoint is deprecated. Use /api/auth/me instead.
  *     parameters:
  *       - in: path
  *         name: tenantId
@@ -108,31 +117,25 @@ tenantRouter.post('/auth/logout', asyncHandler(userController.logout.bind(userCo
  *           type: string
  *           format: uuid
  *         description: Tenant ID
- *     security:
- *       - basicAuth: []
  *     responses:
- *       200:
- *         description: User profile retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
- *       401:
- *         description: Unauthorized or user not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *       301:
+ *         description: Moved permanently - use /api/auth/me
  */
-tenantRouter.get('/auth/me', authenticateUser, asyncHandler(userController.getCurrentUser.bind(userController)));
+tenantRouter.get('/auth/me', (req, res) => {
+    res.status(301).json({ 
+        message: 'This endpoint has been moved to /api/auth/me',
+        redirect: '/api/auth/me'
+    });
+});
 
 /**
  * @swagger
  * /api/tenants/{tenantId}/auth/profile:
  *   put:
+ *     deprecated: true
  *     tags: [User Authentication]
- *     summary: Update user profile
- *     description: Update the current authenticated user's profile information
+ *     summary: Update user profile (DEPRECATED - use /api/auth/profile)
+ *     description: This endpoint is deprecated. Use /api/auth/profile instead.
  *     parameters:
  *       - in: path
  *         name: tenantId
@@ -141,47 +144,16 @@ tenantRouter.get('/auth/me', authenticateUser, asyncHandler(userController.getCu
  *           type: string
  *           format: uuid
  *         description: Tenant ID
- *     security:
- *       - basicAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *                 example: John Doe
- *               family_name:
- *                 type: string
- *                 example: Doe
- *               given_name:
- *                 type: string
- *                 example: John
- *               picture:
- *                 type: string
- *                 format: uri
- *                 example: https://example.com/avatar.jpg
  *     responses:
- *       200:
- *         description: Profile updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
+ *       301:
+ *         description: Moved permanently - use /api/auth/profile
  */
-tenantRouter.put('/auth/profile', 
-    authenticateUser,
-    [
-        body('name').optional().isString().trim(),
-        body('family_name').optional().isString().trim(),
-        body('given_name').optional().isString().trim(),
-        body('picture').optional().isString().trim()
-    ],
-    validateRequest,
-    asyncHandler(userController.updateProfile.bind(userController))
-);
+tenantRouter.put('/auth/profile', (req, res) => {
+    res.status(301).json({ 
+        message: 'This endpoint has been moved to /api/auth/profile',
+        redirect: '/api/auth/profile'
+    });
+});
 
 // --- User Management (Within a Tenant) ---
 /**
@@ -212,7 +184,8 @@ tenantRouter.put('/auth/profile',
 tenantRouter.get('/:tenantId/users', 
     [param('tenantId').isUUID()],
     validateRequest,
-    validateTenantAccess,
+    nileAuthMiddleware,
+    nileTenantMiddleware,
     asyncHandler(userController.getTenantUsers.bind(userController))
 );
 
@@ -268,7 +241,8 @@ tenantRouter.post('/:tenantId/users',
         body('roles').optional().isArray()
     ],
     validateRequest,
-    validateTenantAccess,
+    nileAuthMiddleware,
+    nileTenantMiddleware,
     asyncHandler(userController.addUserToTenant.bind(userController))
 );
 
@@ -350,7 +324,8 @@ tenantRouter.put('/:tenantId/users/:id/activate',
 tenantRouter.get('/:tenantId/workspaces', 
     [param('tenantId').isUUID()],
     validateRequest,
-    validateTenantAccess,
+    nileAuthMiddleware,
+    nileTenantMiddleware,
     asyncHandler(workspaceController.getWorkspaces.bind(workspaceController))
 );
 
@@ -361,7 +336,8 @@ tenantRouter.post('/:tenantId/workspaces',
         body('description').optional().isString().trim()
     ],
     validateRequest,
-    validateTenantAccess,
+    nileAuthMiddleware,
+    nileTenantMiddleware,
     asyncHandler(workspaceController.createWorkspace.bind(workspaceController))
 );
 
