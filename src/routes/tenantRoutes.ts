@@ -19,6 +19,29 @@ tenantRouter.use((req, res, next) => {
 // --- Authentication & Profile (User-level) ---
 // Note: Google OAuth login would typically be handled by a specific OAuth flow
 // and not directly exposed as a simple POST, but for demo, we keep the endpoint.
+/**
+ * @swagger
+ * /api/tenants/{tenantId}/auth/google:
+ *   post:
+ *     tags: [User Authentication]
+ *     summary: Google OAuth login (placeholder)
+ *     description: Placeholder endpoint for Google OAuth login flow
+ *     parameters:
+ *       - in: path
+ *         name: tenantId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Tenant ID
+ *     responses:
+ *       501:
+ *         description: Not implemented
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 tenantRouter.post('/auth/google', async (req, res) => {
     // This endpoint would initiate or complete a Google OAuth flow
     // and create/authenticate a user in the 'users' schema.
@@ -32,6 +55,37 @@ tenantRouter.post('/auth/logout', (req, res) => {
     res.json({ message: 'User logged out successfully.' });
 });
 
+/**
+ * @swagger
+ * /api/tenants/{tenantId}/auth/me:
+ *   get:
+ *     tags: [User Authentication]
+ *     summary: Get current user profile
+ *     description: Retrieve the current authenticated user's profile information
+ *     parameters:
+ *       - in: path
+ *         name: tenantId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Tenant ID
+ *     security:
+ *       - basicAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized or user not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 tenantRouter.get('/auth/me', async (req, res) => {
     const tenantDB = tenantContext.getStore();
     // This typically retrieves the current user based on a JWT or session from headers
@@ -1248,7 +1302,7 @@ tenantRouter.post('/:tenantId/workspaces/:workspaceId/conversations/:conversatio
         res.status(201).json(newMessage);
     } catch (error: any) {
         console.error('Error adding message to conversation:', error);
-        res.status(500).json({ message: 'Internal Server Error: ' + error.message });
+        res.status(500).json({ message: 'Internal Server Error' });
     }
 });
 

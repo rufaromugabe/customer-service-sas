@@ -6,6 +6,7 @@ import { dbAuthorizer, getUnauthorizedResponse, REQUIRE_AUTH } from './basicauth
 import dotenv from 'dotenv';
 import adminRoutes from './routes/adminRoutes.js';
 import tenantRoutes from './routes/tenantRoutes.js';
+import { swaggerUi, specs } from './swagger.js';
 
 console.log('Starting application...');
 dotenv.config();
@@ -115,6 +116,14 @@ if (REQUIRE_AUTH) {
 console.log('Setting up API routes...');
 app.use('/api', adminRoutes); // System Admin APIs (no tenantId in path)
 app.use('/api/tenants/:tenantId', tenantRoutes); // Tenant-specific APIs with tenantId parameter
+
+// Swagger UI setup
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'AI Customer Service SaaS API Docs',
+}));
+
 console.log('API routes configured');
 
 // Insecure endpoint to get all todos for demonstration (not recommended for production)
@@ -137,6 +146,7 @@ console.log('Starting server...');
 app.listen(PORT, () => {
   console.log(`✅ Server is running on port ${PORT}`);
   console.log(`🚀 API endpoints available at http://localhost:${PORT}/api`);
+  console.log(`📚 API documentation available at http://localhost:${PORT}/api-docs`);
 }).on('error', (error) => {
   console.error('❌ Failed to start server:', error);
 });

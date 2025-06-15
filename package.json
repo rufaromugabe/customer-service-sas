@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Multi-tenant AI Customer Service System Backend with Express, Prisma, and NilePostgres",
   "main": "src/app.ts",
-  "type": "module",  "scripts": {
+  "type": "module",
+  "scripts": {
     "dev": "node --import tsx/esm --watch src/app.ts",
     "dev:ts-node": "node --import 'data:text/javascript,import { register } from \"node:module\"; import { pathToFileURL } from \"node:url\"; register(\"ts-node/esm\", pathToFileURL(\"./\"));' --watch src/app.ts",
     "start": "node --import tsx/esm src/app.ts",
@@ -20,25 +21,31 @@
   "license": "ISC",
   "prisma": {
     "schema": "prisma/schema.prisma"
-  },  "dependencies": {
+  },
+  "dependencies": {
     "@prisma/client": "^5.5.2",
     "@types/uuid": "^10.0.0",
     "bcryptjs": "^3.0.2",
     "dotenv": "^16.3.1",
     "express": "^4.21.1",
     "express-basic-auth": "^1.2.1",
+    "node-cache": "^5.1.2",
     "openai": "^4.53.2",
+    "p-limit": "^5.0.0",
+    "p-queue": "^7.4.1",
     "path-to-regexp": "^8.2.0",
     "pg": "^8.11.3",
     "postgres": "^3.4.1",
-    "uuid": "^10.0.0",
-    "p-limit": "^5.0.0",
-    "p-queue": "^7.4.1",
-    "node-cache": "^5.1.2"
-  },  "devDependencies": {
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
     "@flydotio/dockerfile": "^0.5.0",
     "@types/express": "^4.17.20",
     "@types/pg": "^8.10.7",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "nodemon": "^3.0.0",
     "prisma": "^5.5.2",
     "ts-node": "^10.9.1",

@@ -6,6 +6,21 @@ import bcrypt from 'bcryptjs'; // For password hashing (install: npm install bcr
 const adminRouter = Router();
 const prisma = new PrismaClient(); // Use the global prisma client for admin operations
 
+/**
+ * @swagger
+ * /api/health:
+ *   get:
+ *     tags: [Health]
+ *     summary: Health check endpoint
+ *     description: Returns the health status of the API
+ *     responses:
+ *       200:
+ *         description: API is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/HealthCheck'
+ */
 // Health check endpoint
 adminRouter.get('/health', (req, res) => {
     res.json({ 
@@ -15,6 +30,43 @@ adminRouter.get('/health', (req, res) => {
     });
 });
 
+/**
+ * @swagger
+ * /api/db-status:
+ *   get:
+ *     tags: [Health]
+ *     summary: Database connectivity check
+ *     description: Tests the database connection and returns status
+ *     responses:
+ *       200:
+ *         description: Database is connected
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: connected
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *       503:
+ *         description: Database is disconnected
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: disconnected
+ *                 error:
+ *                   type: string
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ */
 // Database connection test endpoint
 adminRouter.get('/db-status', async (req, res) => {
     try {
@@ -33,6 +85,63 @@ adminRouter.get('/db-status', async (req, res) => {
 });
 
 // --- Authentication & Admin Management ---
+/**
+ * @swagger
+ * /api/auth/admin/login:
+ *   post:
+ *     tags: [Admin Authentication]
+ *     summary: Admin login
+ *     description: Authenticate an admin user
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: admin@example.com
+ *               password:
+ *                 type: string
+ *                 example: password123
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Admin logged in successfully.
+ *                 adminId:
+ *                   type: string
+ *                   format: uuid
+ *       400:
+ *         description: Missing required fields
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 adminRouter.post('/auth/admin/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -150,6 +259,29 @@ adminRouter.delete('/admins/:id', async (req, res) => {
 });
 
 // --- Organization Management ---
+/**
+ * @swagger
+ * /api/organizations:
+ *   get:
+ *     tags: [Tenant Management]
+ *     summary: List all tenants/organizations
+ *     description: Retrieve a list of all tenant organizations
+ *     responses:
+ *       200:
+ *         description: List of tenants retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Tenant'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 adminRouter.get('/organizations', async (req, res) => {
     try {
         const organizations = await prisma.tenants.findMany();
@@ -160,6 +292,53 @@ adminRouter.get('/organizations', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/organizations:
+ *   post:
+ *     tags: [Tenant Management]
+ *     summary: Create a new tenant/organization
+ *     description: Create a new tenant organization
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Acme Corporation
+ *               id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Optional custom ID
+ *               current_plan_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Optional plan ID
+ *     responses:
+ *       201:
+ *         description: Tenant created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Tenant'
+ *       400:
+ *         description: Missing required fields
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 adminRouter.post('/organizations', async (req, res) => {
     const { name, id, current_plan_id } = req.body;
     if (!name) {
