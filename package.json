@@ -3,21 +3,24 @@
   "version": "1.0.0",
   "description": "Multi-tenant AI Customer Service System Backend with Express, Prisma, and NilePostgres",
   "main": "src/app.ts",
-  "type": "module",
-  "scripts": {
-    "dev": "node --watch --loader ts-node/esm src/app.ts",
-    "start": "node --loader ts-node/esm src/app.ts",
+  "type": "module",  "scripts": {
+    "dev": "node --import tsx/esm --watch src/app.ts",
+    "dev:ts-node": "node --import 'data:text/javascript,import { register } from \"node:module\"; import { pathToFileURL } from \"node:url\"; register(\"ts-node/esm\", pathToFileURL(\"./\"));' --watch src/app.ts",
+    "start": "node --import tsx/esm src/app.ts",
+    "start:ts-node": "node --import 'data:text/javascript,import { register } from \"node:module\"; import { pathToFileURL } from \"node:url\"; register(\"ts-node/esm\", pathToFileURL(\"./\"));' src/app.ts",
+    "start:optimized": "node --import tsx/esm src/app.optimized.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prisma:generate": "npx prisma generate",
     "prisma:pull": "npx prisma db pull",
-    "prisma:migrate-dev": "npx prisma migrate dev --name init"
+    "prisma:migrate-dev": "npx prisma migrate dev --name init",
+    "optimize:vectors": "node --import tsx/esm prisma/migrations/create_vector_indices.sql",
+    "analyze:perf": "node --import tsx/esm analyze-nile-performance.js"
   },
   "author": "",
   "license": "ISC",
   "prisma": {
     "schema": "prisma/schema.prisma"
-  },
-  "dependencies": {
+  },  "dependencies": {
     "@prisma/client": "^5.5.2",
     "@types/uuid": "^10.0.0",
     "bcryptjs": "^3.0.2",
@@ -28,14 +31,18 @@
     "path-to-regexp": "^8.2.0",
     "pg": "^8.11.3",
     "postgres": "^3.4.1",
-    "uuid": "^10.0.0"
-  },
-  "devDependencies": {
+    "uuid": "^10.0.0",
+    "p-limit": "^5.0.0",
+    "p-queue": "^7.4.1",
+    "node-cache": "^5.1.2"
+  },  "devDependencies": {
     "@flydotio/dockerfile": "^0.5.0",
     "@types/express": "^4.17.20",
     "@types/pg": "^8.10.7",
+    "nodemon": "^3.0.0",
     "prisma": "^5.5.2",
     "ts-node": "^10.9.1",
+    "tsx": "^4.0.0",
     "typescript": "^5.2.2"
   },
   "keywords": []

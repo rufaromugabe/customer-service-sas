@@ -1,22 +1,29 @@
 import express from 'express';
 import { Prisma, PrismaClient } from '@prisma/client';
 import expressBasicAuth from 'express-basic-auth';
-import { match } from 'path-to-regexp';
 import { tenantContext } from './storage.js';
 import { dbAuthorizer, getUnauthorizedResponse, REQUIRE_AUTH } from './basicauth.js';
 import dotenv from 'dotenv';
 import adminRoutes from './routes/adminRoutes.js';
 import tenantRoutes from './routes/tenantRoutes.js';
 
+console.log('Starting application...');
 dotenv.config();
+console.log('Environment configured...');
 
 const PORT = process.env.PORT || 3001;
+console.log(`PORT set to: ${PORT}`);
 
+console.log('Creating Prisma client...');
 const prisma = new PrismaClient({ log: ["query", "info", "warn", "error"] });
+console.log('Prisma client created successfully');
+
 const app = express();
+console.log('Express app created');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+console.log('Middleware configured...');
 
 /**
  * Creates a Prisma Client Extension which sets Nile tenant context
@@ -32,7 +39,7 @@ app.use(express.urlencoded({ extended: true }));
 // @ts-ignore
 function tenantDbExtension(
   tenantId: string | null | undefined
-): (client: any) => PrismaClient<any, any, any, Prisma.DefaultArgs> {
+): (client: any) => any {
   return Prisma.defineExtension((prisma) =>
     // @ts-ignore (Excessive stack depth comparing types...)
     prisma.$extends({
@@ -62,40 +69,53 @@ function tenantDbExtension(
 
 // Middleware to extract tenantId from URL and set Nile context
 app.use((req, res, next) => {
-  // Regex to match tenantId in API paths like /api/tenants/:tenantId/xxx
-  const tenantPathMatcher = match("/api/tenants/:tenantId/*", {
-    decode: decodeURIComponent,
-  });
-  const m = tenantPathMatcher(req.path);
+  console.log(`Processing request: ${req.method} ${req.path}`);
+  
+  // Extract tenantId from paths like /api/tenants/:tenantId/xxx
+  let tenantId = null;
+  const pathParts = req.path.split('/');
+  if (pathParts.length >= 4 && pathParts[1] === 'api' && pathParts[2] === 'tenants') {
+    tenantId = pathParts[3];
+  }
 
-  // @ts-ignore
-  const tenantId = m?.params?.tenantId;
   console.log(
-    "Creating async storage with extended prisma client for tenantId: " + tenantId || "N/A (system-level)"
+    "Creating async storage with extended prisma client for tenantId: " + (tenantId || "N/A (system-level)")
   );
-  // @ts-ignore
-  tenantContext.run(
-    prisma.$extends(tenantDbExtension(tenantId)) as PrismaClient,
-    next
-  );
+  
+  try {
+    // @ts-ignore
+    tenantContext.run(
+      prisma.$extends(tenantDbExtension(tenantId)) as PrismaClient,
+      next
+    );
+  } catch (error) {
+    console.error('Error in tenant context setup:', error);
+    next(error);
+  }
 });
 
 // Apply basic auth middleware if required, after tenant context is set
+console.log(`REQUIRE_AUTH is set to: ${REQUIRE_AUTH}`);
 if (REQUIRE_AUTH) {
+  console.log('Setting up basic auth middleware...');
   app.use(
     expressBasicAuth({
       authorizer: dbAuthorizer,
       authorizeAsync: true,
-      unauthorizedResponse: getUnauthorizedResponse,
-      // You might want to exclude certain public endpoints from basic auth, e.g., invitation acceptance
-      exclude: ['/api/invitations/*'],
+      unauthorizedResponse: getUnauthorizedResponse
+      // Note: exclude option is not available in express-basic-auth
+      // You would need to conditionally apply the middleware to specific routes instead
     })
   );
+} else {
+  console.log('Basic auth is disabled');
 }
 
 // --- API Routes ---
+console.log('Setting up API routes...');
 app.use('/api', adminRoutes); // System Admin APIs (no tenantId in path)
-app.use('/api/tenants', tenantRoutes); // Tenant-specific APIs (tenantId expected in path)
+app.use('/api/tenants/:tenantId', tenantRoutes); // Tenant-specific APIs with tenantId parameter
+console.log('API routes configured');
 
 // Insecure endpoint to get all todos for demonstration (not recommended for production)
 app.get("/insecure/all_todos", async (req, res) => {
@@ -113,4 +133,10 @@ app.get("/insecure/all_todos", async (req, res) => {
 });
 
 // Start the server
-app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+console.log('Starting server...');
+app.listen(PORT, () => {
+  console.log(`✅ Server is running on port ${PORT}`);
+  console.log(`🚀 API endpoints available at http://localhost:${PORT}/api`);
+}).on('error', (error) => {
+  console.error('❌ Failed to start server:', error);
+});

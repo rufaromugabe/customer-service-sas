@@ -9,7 +9,7 @@
 
 2.  **Initialize npm and install dependencies:**
     ```bash
-   
+   npm init -y
    
     npm install express @prisma/client dotenv path-to-regexp uuid express-basic-auth openai pg postgres
     npm install --save-dev typescript ts-node prisma @types/express @types/pg @types/uuid @types/bcryptjs bcryptjs

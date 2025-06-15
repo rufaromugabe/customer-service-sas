@@ -6,10 +6,9 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["public", "users"] // Nile uses 'public' for tenant data and 'users' for user management
+  schemas  = ["public", "users"]
 }
 
-// System-wide tables managed by System Admins
 model admins {
   id            String    @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
   email         String    @unique
@@ -22,48 +21,41 @@ model admins {
   @@schema("public")
 }
 
-model organizations { // Represents a tenant
-  id                 String               @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
-  name               String?
-  created            DateTime             @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  updated            DateTime             @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  deleted            DateTime?            @db.Timestamp(6)
-  active             Boolean              @default(true)
-  current_plan_id    String?              @db.Uuid // Links to plans table
-  tenant_users       tenant_users[]
-  workspaces         workspaces[]
-  roles              roles[]
-  invitations        invitations[]
-  ai_agents          ai_agents[]
-  knowledge_bases    knowledge_bases[]
-  conversations      conversations[]
-  ai_settings        ai_settings[]
-  organization_audit_logs audit_logs[] @relation("OrganizationAuditLogs")
+model tenants {
+  id              String       @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  name            String?
+  created         DateTime     @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  updated         DateTime     @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  deleted         DateTime?    @db.Timestamp(6)
+  compute_id      String?      @db.Uuid
+  active          Boolean      @default(true)
+  current_plan_id String?      @db.Uuid
+  roles           roles[]
+  workspaces      workspaces[]
 
-  @@map("tenants") // Map to 'tenants' table name as per Nile example
   @@schema("public")
 }
 
 model plans {
-  id         String          @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
-  name       String          @unique
-  description String?
-  price      Float
-  created    DateTime        @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  updated    DateTime        @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  deleted    DateTime?       @db.Timestamp(6)
+  id            String          @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  name          String          @unique
+  description   String?
+  price         Float
+  created       DateTime        @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  updated       DateTime        @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  deleted       DateTime?       @db.Timestamp(6)
   plan_features plan_features[]
 
   @@schema("public")
 }
 
 model features {
-  id          String          @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
-  name        String          @unique
-  description String?
-  created     DateTime        @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  updated     DateTime        @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  deleted     DateTime?       @db.Timestamp(6)
+  id            String          @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  name          String          @unique
+  description   String?
+  created       DateTime        @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  updated       DateTime        @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  deleted       DateTime?       @db.Timestamp(6)
   plan_features plan_features[]
 
   @@schema("public")
@@ -73,309 +65,247 @@ model plan_features {
   plan_id    String   @db.Uuid
   feature_id String   @db.Uuid
   created    DateTime @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-
-  plan    plans    @relation(fields: [plan_id], references: [id], onDelete: Cascade)
-  feature features @relation(fields: [feature_id], references: [id], onDelete: Cascade)
+  feature    features @relation(fields: [feature_id], references: [id], onDelete: Cascade)
+  plan       plans    @relation(fields: [plan_id], references: [id], onDelete: Cascade)
 
   @@id([plan_id, feature_id])
   @@schema("public")
 }
 
-enum PermissionType {
-  ORGANIZATIONAL
-  WORKSPACE
-}
-
-model permissions { // Global permission definitions
-  id        String         @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
-  name      String         @unique
+model permissions {
+  id          String    @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  name        String    @unique
   description String?
-  type      PermissionType // Organizational or Workspace permission
-  created   DateTime       @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  updated   DateTime       @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  deleted   DateTime?      @db.Timestamp(6)
-  role_permissions role_permissions[]
+  type        String
+  created     DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  updated     DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  deleted     DateTime? @db.Timestamp(6)
 
   @@schema("public")
 }
 
-
-// Tenant-specific tables (will be filtered by Nile's RLS using tenant_id)
-model todos { // Renamed from original example's 'todos' for clarity, but keeping structure for AI demo
-  id        String   @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenant_id String   @db.Uuid
-  title     String?  @db.VarChar(256)
-  estimate  String?  @db.VarChar(256)
-  // Prisma doesn't support vector types yet: https://github.com/prisma/prisma/issues/18442
-  embedding Unsupported("vector(768)")?
+model todos {
+  id        String                 @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id String                 @db.Uuid
+  title     String?                @db.VarChar(256)
+  estimate  String?                @db.VarChar(256)
+  embedding Unsupported("vector")?
   complete  Boolean?
 
-  @@id([tenant_id, id], map: "todos_tenant_id_id") // Important: Composite ID with tenant_id for RLS
-  @@schema("public") // This table lives in the 'public' schema but filtered by tenant_id
+  @@id([tenant_id, id], map: "todos_tenant_id_id")
+  @@schema("public")
 }
 
 model workspaces {
-  id              String          @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
-  tenant_id       String          @db.Uuid
-  name            String
-  description     String?
-  created         DateTime        @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  updated         DateTime        @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  deleted         DateTime?       @db.Timestamp(6)
-  organization    organizations   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  workspace_users workspace_users[]
-  ai_agents       ai_agents[]
-  knowledge_bases knowledge_bases[]
-  conversations   conversations[]
-  ai_settings     ai_settings[]
+  id          String    @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  tenant_id   String    @db.Uuid
+  name        String
+  description String?
+  created     DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  updated     DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  deleted     DateTime? @db.Timestamp(6)
+  tenant      tenants   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
-  @@id([tenant_id, id]) // Composite ID with tenant_id for RLS
+  @@id([tenant_id, id])
   @@schema("public")
 }
 
-model roles { // Tenant-specific roles
-  id              String           @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
-  tenant_id       String           @db.Uuid
-  name            String
-  description     String?
-  created         DateTime         @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  updated         DateTime         @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  deleted         DateTime?        @db.Timestamp(6)
-  organization    organizations    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+model roles {
+  id               String             @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  tenant_id        String             @db.Uuid
+  name             String
+  description      String?
+  created          DateTime           @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  updated          DateTime           @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  deleted          DateTime?          @db.Timestamp(6)
   role_permissions role_permissions[]
-  workspace_users workspace_users[] // For roles assigned within a workspace
+  tenant           tenants            @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
-  @@id([tenant_id, id]) // Composite ID with tenant_id for RLS
+  @@id([tenant_id, id])
   @@schema("public")
 }
 
 model role_permissions {
-  role_id      String   @db.Uuid
+  role_id       String   @db.Uuid
+  tenant_id     String   @db.Uuid
   permission_id String   @db.Uuid
-  created      DateTime @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  created       DateTime @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  role          roles    @relation(fields: [tenant_id, role_id], references: [tenant_id, id], onDelete: Cascade)
 
-  role      roles     @relation(fields: [role_id], references: [id], onDelete: Cascade)
-  permission permissions @relation(fields: [permission_id], references: [id], onDelete: Cascade)
-
-  @@id([role_id, permission_id])
+  @@id([tenant_id, role_id, permission_id])
   @@schema("public")
 }
 
 model invitations {
-  id              String        @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
-  tenant_id       String        @db.Uuid
-  email           String
-  token           String        @unique // Public token for invitation acceptance
-  status          String        @default("pending") // "pending", "accepted", "cancelled", "expired"
-  expires_at      DateTime?     @db.Timestamp(6)
-  invited_by_user_id String?    @db.Uuid // User who sent the invitation
-  created         DateTime      @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  updated         DateTime      @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  organization    organizations @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  id                 String    @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  tenant_id          String    @db.Uuid
+  email              String
+  token              String
+  status             String    @default("pending")
+  expires_at         DateTime? @db.Timestamp(6)
+  invited_by_user_id String?
+  created            DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  updated            DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
 
-  @@id([tenant_id, id]) // Composite ID with tenant_id for RLS
+  @@id([tenant_id, id])
+  @@unique([tenant_id, token])
   @@schema("public")
 }
 
-// AI Customer Service System Specific Models
 model ai_agents {
-  id              String          @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
-  tenant_id       String          @db.Uuid
-  workspace_id    String          @db.Uuid
-  name            String
-  description     String?
-  model_config    Json? // JSON field to store AI model specific configurations
-  status          String          @default("active") // e.g., "active", "inactive", "training"
-  created         DateTime        @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  updated         DateTime        @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  deleted         DateTime?       @db.Timestamp(6)
-  organization    organizations   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  workspace       workspaces      @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  conversations   conversations[]
+  id           String    @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  tenant_id    String    @db.Uuid
+  workspace_id String    @db.Uuid
+  name         String
+  description  String?
+  model_config Json?
+  status       String    @default("active")
+  created      DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  updated      DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  deleted      DateTime? @db.Timestamp(6)
 
-  @@id([tenant_id, id]) // Composite ID with tenant_id for RLS
+  @@id([tenant_id, id])
   @@schema("public")
 }
 
 model knowledge_bases {
-  id              String     @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
-  tenant_id       String     @db.Uuid
-  workspace_id    String     @db.Uuid
-  name            String
-  description     String?
-  created         DateTime   @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  updated         DateTime   @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  deleted         DateTime?  @db.Timestamp(6)
-  organization    organizations @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  workspace       workspaces @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  documents       documents[]
+  id           String    @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  tenant_id    String    @db.Uuid
+  workspace_id String    @db.Uuid
+  name         String
+  description  String?
+  created      DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  updated      DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  deleted      DateTime? @db.Timestamp(6)
 
-  @@id([tenant_id, id]) // Composite ID with tenant_id for RLS
+  @@id([tenant_id, id])
   @@schema("public")
 }
 
 model documents {
-  id                 String          @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
-  knowledge_base_id  String          @db.Uuid
-  tenant_id          String          @db.Uuid
-  workspace_id       String          @db.Uuid
-  title              String
-  content            String // Store raw text content
-  embedding          Unsupported("vector(768)")? // Vector embedding of the content
-  created            DateTime        @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  updated            DateTime        @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  deleted            DateTime?       @db.Timestamp(6)
-  knowledge_base     knowledge_bases @relation(fields: [knowledge_base_id], references: [id], onDelete: Cascade)
+  id                String                 @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  knowledge_base_id String                 @db.Uuid
+  tenant_id         String                 @db.Uuid
+  workspace_id      String                 @db.Uuid
+  title             String
+  content           String
+  embedding         Unsupported("vector")?
+  created           DateTime               @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  updated           DateTime               @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  deleted           DateTime?              @db.Timestamp(6)
 
-  @@id([tenant_id, id]) // Composite ID with tenant_id for RLS
+  @@id([tenant_id, id])
   @@schema("public")
-}
-
-enum ConversationStatus {
-  OPEN
-  CLOSED
-  PENDING_AGENT
-  RESOLVED
-}
-
-enum Sentiment {
-  POSITIVE
-  NEUTRAL
-  NEGATIVE
 }
 
 model conversations {
-  id            String             @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
-  tenant_id     String             @db.Uuid
-  workspace_id  String             @db.Uuid
-  customer_id   String?            // Could be a separate 'customers' table if needed, or just a unique identifier
-  start_time    DateTime           @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  end_time      DateTime?          @db.Timestamp(6)
-  status        ConversationStatus @default(OPEN)
-  agent_id      String?            @db.Uuid // AI agent handling the conversation
-  sentiment     Sentiment?
-  summary       String?
-  created       DateTime           @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  updated       DateTime           @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  deleted       DateTime?          @db.Timestamp(6)
-  organization  organizations      @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  workspace     workspaces         @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  agent         ai_agents?         @relation(fields: [agent_id], references: [id], onDelete: SetNull)
-  messages      messages[]
+  id           String    @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  tenant_id    String    @db.Uuid
+  workspace_id String    @db.Uuid
+  customer_id  String?
+  start_time   DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  end_time     DateTime? @db.Timestamp(6)
+  status       String    @default("OPEN")
+  agent_id     String?   @db.Uuid
+  sentiment    String?
+  summary      String?
+  created      DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  updated      DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  deleted      DateTime? @db.Timestamp(6)
 
-  @@id([tenant_id, id]) // Composite ID with tenant_id for RLS
+  @@id([tenant_id, id])
   @@schema("public")
 }
 
-enum SenderType {
-  CUSTOMER
-  AGENT
-  HUMAN_AGENT
-}
-
 model messages {
-  id             String    @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
-  conversation_id String    @db.Uuid
-  tenant_id      String    @db.Uuid
-  workspace_id   String    @db.Uuid
-  sender_type    SenderType
-  content        String
-  timestamp      DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  embedding      Unsupported("vector(768)")? // Embedding of the message content for search/analysis
-  created        DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  updated        DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  conversation   conversations @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  id              String                 @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  conversation_id String                 @db.Uuid
+  tenant_id       String                 @db.Uuid
+  workspace_id    String                 @db.Uuid
+  sender_type     String
+  content         String
+  timestamp       DateTime               @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  embedding       Unsupported("vector")?
+  created         DateTime               @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  updated         DateTime               @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
 
-  @@id([tenant_id, id]) // Composite ID with tenant_id for RLS
+  @@id([tenant_id, id])
   @@schema("public")
 }
 
 model ai_settings {
-  id               String    @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
-  tenant_id        String    @db.Uuid
-  workspace_id     String    @db.Uuid
+  id               String   @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  tenant_id        String   @db.Uuid
+  workspace_id     String   @db.Uuid
   default_ai_model String?
   embedding_model  String?
   temperature      Float?
   max_tokens       Int?
-  created          DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  updated          DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  workspace        workspaces @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  created          DateTime @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  updated          DateTime @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
 
-  @@id([tenant_id, id]) // Composite ID with tenant_id for RLS
+  @@id([tenant_id, id])
   @@schema("public")
-}
-
-enum AuditLogType {
-  SYSTEM
-  ORGANIZATION
 }
 
 model audit_logs {
-  id           String       @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
-  tenant_id    String?      @db.Uuid // Null for system-level logs
-  user_id      String?      @db.Uuid // Null for actions not directly tied to a specific user
-  action       String
-  entity_type  String
-  entity_id    String?      @db.Uuid
-  timestamp    DateTime     @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  details      Json?
-  log_type     AuditLogType // SYSTEM or ORGANIZATION
-  organization organizations? @relation("OrganizationAuditLogs", fields: [tenant_id], references: [id], onDelete: Cascade)
-  user         users?         @relation("UserAuditLogs", fields: [user_id], references: [id], onDelete: Cascade)
+  id          String   @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  tenant_id   String   @db.Uuid
+  user_id     String?  @db.Uuid
+  action      String
+  entity_type String
+  entity_id   String?  @db.Uuid
+  timestamp   DateTime @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  details     Json?
+  log_type    String
 
-
-  @@schema("public")
+  @@id([tenant_id, id])
+  @@schema("users")
 }
 
-
-// User management tables (in 'users' schema for Nile)
 model tenant_users {
-  tenant_id String      @db.Uuid
-  user_id   String      @db.Uuid
-  created   DateTime    @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  updated   DateTime    @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  deleted   DateTime?   @db.Timestamp(6)
-  roles     String[] // Stores role names/IDs assigned to this user within this tenant
+  tenant_id String    @db.Uuid
+  user_id   String    @db.Uuid
+  created   DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  updated   DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  deleted   DateTime? @db.Timestamp(6)
+  roles     String[]
   email     String?
-  // Explicitly define the relation to the 'organizations' (tenants) table in 'public' schema
-  organization organizations @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user         users         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@id([tenant_id, user_id])
-  @@schema("users") // This table lives in the 'users' schema
+  @@index([tenant_id], map: "tenant_users_tenant_id")
+  @@index([user_id], map: "tenant_users_user_id")
+  @@schema("users")
 }
 
 model users {
-  id            String          @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
-  created       DateTime        @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  updated       DateTime        @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  deleted       DateTime?       @db.Timestamp(6)
-  name          String?
-  family_name   String?
-  given_name    String?
-  email         String?         @unique
-  picture       String?
-  email_verified DateTime?      @db.Timestamp(6)
-  tenant_users  tenant_users[]
-  user_audit_logs audit_logs[] @relation("UserAuditLogs")
+  id             String    @id @default(dbgenerated("public.uuid_generate_v7()")) @db.Uuid
+  created        DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  updated        DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  deleted        DateTime? @db.Timestamp(6)
+  name           String?
+  family_name    String?
+  given_name     String?
+  email          String?
+  picture        String?
+  email_verified DateTime? @db.Timestamp(6)
 
-  @@schema("users") // This table lives in the 'users' schema
+  @@schema("users")
 }
 
+/// This table has subclasses and requires additional setup for migrations. Visit https://pris.ly/d/table-inheritance for more info.
 model workspace_users {
-  workspace_id String   @db.Uuid
-  user_id      String   @db.Uuid
-  tenant_id    String   @db.Uuid // Redundant but good for RLS clarity and direct access if needed
-  role_id      String   @db.Uuid // The specific role assigned to this user within this workspace
-  created      DateTime @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
-  updated      DateTime @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  workspace_id String    @db.Uuid
+  user_id      String    @db.Uuid
+  tenant_id    String    @db.Uuid
+  role_id      String    @db.Uuid
+  created      DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
+  updated      DateTime  @default(dbgenerated("LOCALTIMESTAMP")) @db.Timestamp(6)
   deleted      DateTime? @db.Timestamp(6)
 
-  workspace    workspaces @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  user         users      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  role         roles      @relation(fields: [role_id], references: [id], onDelete: Cascade)
-
-  @@id([workspace_id, user_id])
-  @@schema("public") // This table lives in the 'public' schema and should be RLS'd by tenant_id of the workspace
+  @@id([tenant_id, workspace_id, user_id])
+  @@index([tenant_id], map: "workspace_users_tenant_id")
+  @@index([user_id], map: "workspace_users_user_id")
+  @@index([workspace_id], map: "workspace_users_workspace_id")
+  @@schema("users")
 }
