@@ -7,3 +7,4 @@ export { WorkspaceController } from './WorkspaceController.ts';
 export { RoleController } from './RoleController.ts';
 export { AIController } from './AIController.ts';
 export { ConversationController } from './ConversationController.ts';
+export { default as AuthController } from './AuthController.ts';

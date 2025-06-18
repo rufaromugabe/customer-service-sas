@@ -7,6 +7,8 @@ export {
     ApiResponse 
 } from './response.ts';
 
+export { default as JWTService } from './jwtService.js';
+
 export { 
     getPaginationOptions, 
     validateId, 

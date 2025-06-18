@@ -1,53 +1,23 @@
 import { Request, Response } from 'express';
 import { AdminService } from '../services/AdminService.ts';
+import TokenService from '../services/TokenService.ts';
 import { PrismaClient } from '@prisma/client';
-import jwt, { SignOptions } from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-
-export interface AdminAuthRequest extends Request {
-    admin?: {
-        id: string;
-        email: string;
-        name?: string;
-        role: 'admin' | 'super_admin';
-    };
-}
+import { RequestWithAuth } from '../middleware/auth.ts';
 
 export class AdminController {
     private adminService: AdminService;
-    private jwtSecret: string;
-    private jwtExpiresIn: string;
+    private tokenService: TokenService;
 
     constructor(prisma: PrismaClient) {
         this.adminService = new AdminService(prisma);
-        this.jwtSecret = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
-        this.jwtExpiresIn = process.env.JWT_EXPIRES_IN || '24h';
-        
-        if (this.jwtSecret === 'your-super-secret-jwt-key-change-in-production') {
-            console.warn('⚠️  WARNING: Using default JWT secret. Please set JWT_SECRET environment variable in production!');
-        }
-    }    private generateAccessToken(admin: { id: string; email: string; name?: string | null }): string {
-        const payload = { 
-            id: admin.id, 
-            email: admin.email, 
-            name: admin.name || undefined, // Convert null to undefined
-            role: 'admin',
-            type: 'admin_access_token',
-            iat: Math.floor(Date.now() / 1000)
-        };
-        
-        return jwt.sign(payload, this.jwtSecret, { expiresIn: '24h' });
+        this.tokenService = new TokenService(prisma);
     }
 
-    private generateRefreshToken(admin: { id: string; email: string }): string {
-        const payload = { 
-            id: admin.id, 
-            email: admin.email,
-            type: 'admin_refresh_token',
-            iat: Math.floor(Date.now() / 1000)
-        };
-        
-        return jwt.sign(payload, this.jwtSecret, { expiresIn: '7d' });
+    private getClientInfo(req: Request) {
+        const ipAddress = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'] as string;
+        const userAgent = req.headers['user-agent'];
+        return { ipAddress, userAgent };
     }
 
     private setSecureCookies(res: Response, accessToken: string, refreshToken: string): void {
@@ -58,7 +28,7 @@ export class AdminController {
             httpOnly: true,
             secure: isProduction,
             sameSite: 'strict',
-            maxAge: 24 * 60 * 60 * 1000, // 24 hours
+            maxAge: 15 * 60 * 1000, // 15 minutes
             path: '/api',
         });
 
@@ -68,7 +38,7 @@ export class AdminController {
             secure: isProduction,
             sameSite: 'strict',
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-            path: '/api/auth/admin',
+            path: '/api',
         });
     }
 
@@ -128,8 +98,11 @@ export class AdminController {
             console.error('Error deleting admin:', error);
             res.status(500).json({ message: 'Internal Server Error' });
         }
-    };    loginAdmin = async (req: Request, res: Response) => {
+    };
+
+    loginAdmin = async (req: Request, res: Response) => {
         const { email, password } = req.body;
+        const { ipAddress, userAgent } = this.getClientInfo(req);
         
         // Input validation
         if (!email || !password) {
@@ -151,14 +124,20 @@ export class AdminController {
         }
 
         try {
-            // Rate limiting should be implemented here in production
-            // For example, using express-rate-limit or Redis
-            
-            const admin = await this.adminService.validateAdmin(email, password);
+            // Check if admin is locked
+            const isLocked = await this.tokenService.isAdminLocked(email);
+            if (isLocked) {
+                return res.status(423).json({
+                    error: 'Account Locked',
+                    message: 'Account is temporarily locked due to multiple failed login attempts',
+                    code: 'ACCOUNT_LOCKED'
+                });
+            }
+
+            // Get admin by email
+            const admin = await this.adminService.getAdminByEmail(email);
             if (!admin) {
-                // Use the same response time for invalid credentials to prevent timing attacks
-                await new Promise(resolve => setTimeout(resolve, 100));
-                
+                await this.tokenService.recordFailedLogin(email, ipAddress);
                 return res.status(401).json({ 
                     error: 'Authentication Failed',
                     message: 'Invalid email or password',
@@ -166,20 +145,48 @@ export class AdminController {
                 });
             }
 
-            // Generate tokens
-            const accessToken = this.generateAccessToken(admin);
-            const refreshToken = this.generateRefreshToken(admin);
+            // Verify password
+            const isPasswordValid = await bcrypt.compare(password, admin.password_hash);
+            if (!isPasswordValid) {
+                await this.tokenService.recordFailedLogin(email, ipAddress);
+                return res.status(401).json({ 
+                    error: 'Authentication Failed',
+                    message: 'Invalid email or password',
+                    code: 'INVALID_CREDENTIALS'
+                });
+            }
+
+            // Check if admin is active
+            if (!admin.is_active) {
+                return res.status(403).json({
+                    error: 'Access Denied',
+                    message: 'Admin account is inactive',
+                    code: 'ACCOUNT_INACTIVE'
+                });
+            }
+
+            // Generate JWT tokens
+            const tokens = await this.tokenService.generateAdminTokens(
+                admin.id,
+                admin.email,
+                admin.role,
+                ipAddress,
+                userAgent
+            );
+
+            // Update last login
+            await this.tokenService.updateAdminLastLogin(admin.id, ipAddress);
 
             // Set secure cookies
-            this.setSecureCookies(res, accessToken, refreshToken);            // Log successful login (for audit purposes)
-            console.log(`Admin login successful: ${admin.email} at ${new Date().toISOString()}`);
+            this.setSecureCookies(res, tokens.accessToken, tokens.refreshToken);
 
-            // Return success response (admin data is already clean from service)
+            // Return success response
+            const { password_hash, ...adminData } = admin;
             res.json({ 
                 message: 'Login successful',
-                admin: admin,
-                accessToken, // Include token for API clients that prefer headers over cookies
-                expiresIn: this.jwtExpiresIn
+                admin: adminData,
+                tokens,
+                expiresIn: process.env.JWT_EXPIRES_IN || '15m'
             });
 
         } catch (error: any) {
@@ -192,8 +199,13 @@ export class AdminController {
         }
     };
 
-    logoutAdmin = async (req: Request, res: Response) => {
+    logoutAdmin = async (req: RequestWithAuth, res: Response) => {
         try {
+            // Revoke tokens if we have admin context
+            if (req.authAdmin) {
+                await this.tokenService.revokeAllAdminTokens(req.authAdmin.adminId);
+            }
+
             // Clear secure cookies
             res.clearCookie('admin_access_token', { 
                 path: '/api',
@@ -203,15 +215,11 @@ export class AdminController {
             });
             
             res.clearCookie('admin_refresh_token', { 
-                path: '/api/auth/admin',
+                path: '/api',
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'strict'
             });
-
-            // In a production system, you might want to:
-            // 1. Add the JWT to a blacklist/revocation list
-            // 2. Log the logout event for audit purposes
 
             res.json({ 
                 message: 'Logout successful',
@@ -227,105 +235,92 @@ export class AdminController {
         }
     };
 
-    getCurrentAdmin = async (req: AdminAuthRequest, res: Response) => {
+    getCurrentAdmin = async (req: RequestWithAuth, res: Response) => {
         try {
-            if (!req.admin) {
+            if (!req.authAdmin) {
                 return res.status(401).json({ 
-                    error: 'Unauthorized',
-                    message: 'Admin authentication required',
-                    code: 'NO_AUTH'
+                    error: 'Unauthenticated',
+                    message: 'Admin authentication required' 
                 });
             }
 
-            // Fetch fresh admin data from database
-            const admin = await this.adminService.getAdminById(req.admin.id);
+            const admin = await this.adminService.getAdminById(req.authAdmin.adminId);
             if (!admin) {
                 return res.status(404).json({ 
                     error: 'Not Found',
-                    message: 'Admin account not found',
-                    code: 'ADMIN_NOT_FOUND'
+                    message: 'Admin not found' 
                 });
-            }            // Return admin info (data is already clean from service)
-            res.json({
-                admin: admin,
-                permissions: ['admin'], // Could be expanded based on role system
-                lastLogin: new Date().toISOString()
-            });
+            }
 
+            res.json(admin);
         } catch (error: any) {
-            console.error('Get current admin error:', error);
+            console.error('Error getting current admin:', error);
             res.status(500).json({ 
                 error: 'Internal Server Error',
-                message: 'Unable to fetch admin information'
+                message: 'Unable to get admin information' 
             });
         }
     };
 
     refreshToken = async (req: Request, res: Response) => {
+        const { ipAddress, userAgent } = this.getClientInfo(req);
+        
         try {
-            const refreshToken = req.cookies.admin_refresh_token;
+            const refreshToken = req.cookies?.admin_refresh_token || req.body.refreshToken;
             
             if (!refreshToken) {
                 return res.status(401).json({
-                    error: 'Unauthorized',
-                    message: 'Refresh token required',
-                    code: 'NO_REFRESH_TOKEN'
+                    error: 'Refresh token required',
+                    message: 'No refresh token provided'
                 });
             }
 
-            // Verify refresh token
-            const decoded = jwt.verify(refreshToken, this.jwtSecret) as any;
-            
-            if (decoded.type !== 'admin_refresh_token') {
-                return res.status(401).json({
-                    error: 'Unauthorized',
-                    message: 'Invalid refresh token type',
-                    code: 'INVALID_TOKEN_TYPE'
-                });
-            }
+            // Refresh the token
+            const tokens = await this.tokenService.refreshAdminToken(
+                refreshToken,
+                ipAddress,
+                userAgent
+            );
 
-            // Get admin data
-            const admin = await this.adminService.getAdminById(decoded.id);
-            if (!admin) {
-                return res.status(404).json({
-                    error: 'Not Found',
-                    message: 'Admin account not found',
-                    code: 'ADMIN_NOT_FOUND'
-                });
-            }
+            // Set new secure cookies
+            this.setSecureCookies(res, tokens.accessToken, tokens.refreshToken);
 
-            // Generate new access token
-            const newAccessToken = this.generateAccessToken(admin);
-              // Set new access token cookie
-            res.cookie('admin_access_token', newAccessToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-                maxAge: 24 * 60 * 60 * 1000, // 24 hours
-                path: '/api',
-            });
-
-            // Return response with admin data (already clean from service)
             res.json({
                 message: 'Token refreshed successfully',
-                admin: admin,
-                accessToken: newAccessToken,
-                expiresIn: this.jwtExpiresIn
+                tokens,
+                expiresIn: process.env.JWT_EXPIRES_IN || '15m'
             });
 
         } catch (error: any) {
-            if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-                return res.status(401).json({
-                    error: 'Unauthorized',
-                    message: 'Invalid or expired refresh token',
-                    code: 'INVALID_REFRESH_TOKEN'
+            console.error('Token refresh error:', error);
+            res.status(401).json({
+                error: 'Token refresh failed',
+                message: 'Invalid or expired refresh token'
+            });
+        }
+    };
+
+    // Utility method to revoke all tokens (for security purposes)
+    revokeAllTokens = async (req: RequestWithAuth, res: Response) => {
+        try {
+            if (!req.authAdmin) {
+                return res.status(401).json({ 
+                    error: 'Unauthenticated',
+                    message: 'Admin authentication required' 
                 });
             }
 
-            console.error('Token refresh error:', error);
-            res.status(500).json({
+            await this.tokenService.revokeAllAdminTokens(req.authAdmin.adminId);
+
+            res.json({
+                message: 'All tokens revoked successfully'
+            });
+
+        } catch (error: any) {
+            console.error('Error revoking tokens:', error);
+            res.status(500).json({ 
                 error: 'Internal Server Error',
-                message: 'Unable to refresh token'
+                message: 'Unable to revoke tokens' 
             });
         }
     };

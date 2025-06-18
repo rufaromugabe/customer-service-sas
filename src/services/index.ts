@@ -10,3 +10,4 @@ export { InvitationService } from './InvitationService.ts';
 export { PermissionService } from './PermissionService.ts';
 export { AuditService } from './AuditService.ts';
 export { AnalyticsService } from './AnalyticsService.ts';
+export { default as TokenService } from './TokenService.ts';

@@ -190,7 +190,7 @@ adminRouter.post('/auth/admin/login',
  *                   type: string
  *                   example: Admin logged out successfully
  */
-adminRouter.post('/auth/admin/logout', asyncHandler(adminController.logoutAdmin));
+adminRouter.post('/auth/admin/logout', adminAuthMiddleware, asyncHandler(adminController.logoutAdmin));
 
 /**
  * @swagger
@@ -212,7 +212,7 @@ adminRouter.post('/auth/admin/logout', asyncHandler(adminController.logoutAdmin)
  *       401:
  *         description: Unauthorized
  */
-adminRouter.get('/auth/admin/me', adminJWTMiddleware, asyncHandler(adminController.getCurrentAdmin));
+adminRouter.get('/auth/admin/me', adminAuthMiddleware, asyncHandler(adminController.getCurrentAdmin));
 
 /**
  * @swagger
@@ -228,6 +228,23 @@ adminRouter.get('/auth/admin/me', adminJWTMiddleware, asyncHandler(adminControll
  *         description: Invalid or expired refresh token
  */
 adminRouter.post('/auth/admin/refresh', asyncHandler(adminController.refreshToken));
+
+/**
+ * @swagger
+ * /api/auth/admin/revoke-all:
+ *   post:
+ *     tags: [Admin Authentication]
+ *     summary: Revoke all admin tokens
+ *     description: Revoke all active tokens for the current admin (logout from all devices)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All tokens revoked successfully
+ *       401:
+ *         description: Unauthorized
+ */
+adminRouter.post('/auth/admin/revoke-all', adminAuthMiddleware, asyncHandler(adminController.revokeAllTokens));
 
 // Admin CRUD operations
 /**
