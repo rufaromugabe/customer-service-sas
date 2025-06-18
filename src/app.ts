@@ -149,20 +149,8 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
 
 console.log('API routes configured');
 
-// Insecure endpoint to get all todos for demonstration (not recommended for production)
-app.get("/insecure/all_todos", async (req, res) => {
-  try {
-    const tenantDB = tenantContext.getStore();
-    // This will fetch all todos without tenant filtering if the context is reset
-    const todos = await (prisma as PrismaClient).todos.findMany(); // Use base prisma client here
-    res.json(todos);
-  } catch (error: any) {
-    console.error("error in insecure endpoint: " + error.message);
-    res.status(500).json({
-      message: "Internal Server Error",
-    });
-  }
-});
+// Security: Removed insecure endpoint '/insecure/all_todos' 
+// If you need debugging endpoints, create them with proper authentication
 
 // Start the server
 console.log('Starting server...');

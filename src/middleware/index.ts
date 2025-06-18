@@ -22,8 +22,7 @@ export {
     adminJWTMiddleware,
     adminLoginRateLimit,
     adminLoginSlowDown,
-    adminAPIRateLimit,
-    requireSuperAdmin
+    adminAPIRateLimit
 } from './adminAuth.ts';
 export type { AdminAuthRequest } from './adminAuth.ts';
 
@@ -42,3 +41,12 @@ export {
 export { validateRequest, validateQueryParams, validateParams } from './validation.ts';
 export { errorHandler, notFoundHandler, asyncHandler } from './errorHandler.ts';
 export type { ErrorWithStatus } from './errorHandler.ts';
+
+// Universal JWT Auth middleware exports
+export {
+    universalJWTAuth,
+    requireAdmin,
+    requireSuperAdmin,
+    requireUser,
+    requireTenantAccess
+} from './universalAuth.ts';

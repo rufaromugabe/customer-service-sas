@@ -13,11 +13,10 @@ import {
 import { 
     // Legacy auth middleware (keeping for backwards compatibility)
     authenticateUser, 
-    validateTenantAccess, 
-    // New Nile Auth middleware
-    nileAuthMiddleware,
-    nileTenantMiddleware,
-    nileOptionalAuthMiddleware,
+    // Universal JWT Auth middleware
+    universalJWTAuth,
+    requireTenantAccess,
+    requireUser,
     asyncHandler,
     validateRequest
 } from '../middleware/index.ts';
@@ -184,8 +183,8 @@ tenantRouter.put('/auth/profile', (req, res) => {
 tenantRouter.get('/:tenantId/users', 
     [param('tenantId').isUUID()],
     validateRequest,
-    nileAuthMiddleware,
-    nileTenantMiddleware,
+    universalJWTAuth,
+    requireTenantAccess,
     asyncHandler(userController.getTenantUsers.bind(userController))
 );
 
@@ -241,8 +240,8 @@ tenantRouter.post('/:tenantId/users',
         body('roles').optional().isArray()
     ],
     validateRequest,
-    nileAuthMiddleware,
-    nileTenantMiddleware,
+    universalJWTAuth,
+    requireTenantAccess,
     asyncHandler(userController.addUserToTenant.bind(userController))
 );
 
@@ -284,7 +283,7 @@ tenantRouter.get('/:tenantId/users/:id',
         param('id').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(userController.getTenantUser.bind(userController))
 );
 
@@ -295,7 +294,7 @@ tenantRouter.put('/:tenantId/users/:id',
         body('roles').optional().isArray()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(userController.updateTenantUser.bind(userController))
 );
 
@@ -305,7 +304,7 @@ tenantRouter.delete('/:tenantId/users/:id',
         param('id').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(userController.removeUserFromTenant.bind(userController))
 );
 
@@ -316,7 +315,7 @@ tenantRouter.put('/:tenantId/users/:id/activate',
         body('activate').isBoolean()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(userController.activateDeactivateUser.bind(userController))
 );
 
@@ -324,8 +323,8 @@ tenantRouter.put('/:tenantId/users/:id/activate',
 tenantRouter.get('/:tenantId/workspaces', 
     [param('tenantId').isUUID()],
     validateRequest,
-    nileAuthMiddleware,
-    nileTenantMiddleware,
+    universalJWTAuth,
+    requireTenantAccess,
     asyncHandler(workspaceController.getWorkspaces.bind(workspaceController))
 );
 
@@ -336,8 +335,8 @@ tenantRouter.post('/:tenantId/workspaces',
         body('description').optional().isString().trim()
     ],
     validateRequest,
-    nileAuthMiddleware,
-    nileTenantMiddleware,
+    universalJWTAuth,
+    requireTenantAccess,
     asyncHandler(workspaceController.createWorkspace.bind(workspaceController))
 );
 
@@ -347,7 +346,7 @@ tenantRouter.get('/:tenantId/workspaces/:id',
         param('id').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(workspaceController.getWorkspace.bind(workspaceController))
 );
 
@@ -359,7 +358,7 @@ tenantRouter.put('/:tenantId/workspaces/:id',
         body('description').optional().isString().trim()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(workspaceController.updateWorkspace.bind(workspaceController))
 );
 
@@ -369,7 +368,7 @@ tenantRouter.delete('/:tenantId/workspaces/:id',
         param('id').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(workspaceController.deleteWorkspace.bind(workspaceController))
 );
 
@@ -379,7 +378,7 @@ tenantRouter.get('/:tenantId/workspaces/:id/users',
         param('id').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(workspaceController.getWorkspaceUsers.bind(workspaceController))
 );
 
@@ -391,7 +390,7 @@ tenantRouter.post('/:tenantId/workspaces/:id/users',
         body('roleId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(workspaceController.addUserToWorkspace.bind(workspaceController))
 );
 
@@ -402,7 +401,7 @@ tenantRouter.delete('/:tenantId/workspaces/:id/users/:userId',
         param('userId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(workspaceController.removeUserFromWorkspace.bind(workspaceController))
 );
 
@@ -410,7 +409,7 @@ tenantRouter.delete('/:tenantId/workspaces/:id/users/:userId',
 tenantRouter.get('/:tenantId/roles', 
     [param('tenantId').isUUID()],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(roleController.getRoles.bind(roleController))
 );
 
@@ -421,7 +420,7 @@ tenantRouter.post('/:tenantId/roles',
         body('description').optional().isString().trim()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(roleController.createRole.bind(roleController))
 );
 
@@ -433,7 +432,7 @@ tenantRouter.put('/:tenantId/roles/:id',
         body('description').optional().isString().trim()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(roleController.updateRole.bind(roleController))
 );
 
@@ -443,7 +442,7 @@ tenantRouter.delete('/:tenantId/roles/:id',
         param('id').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(roleController.deleteRole.bind(roleController))
 );
 
@@ -453,7 +452,7 @@ tenantRouter.get('/:tenantId/roles/:id/permissions',
         param('id').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(roleController.getRolePermissions.bind(roleController))
 );
 
@@ -464,7 +463,7 @@ tenantRouter.post('/:tenantId/roles/:id/permissions',
         body('permissionId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(roleController.assignPermissionToRole.bind(roleController))
 );
 
@@ -475,7 +474,7 @@ tenantRouter.delete('/:tenantId/roles/:id/permissions/:permId',
         param('permId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(roleController.removePermissionFromRole.bind(roleController))
 );
 
@@ -486,7 +485,7 @@ tenantRouter.post('/:tenantId/users/:userId/roles',
         body('roleId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(userController.assignRoleToUser.bind(userController))
 );
 
@@ -497,7 +496,7 @@ tenantRouter.delete('/:tenantId/users/:userId/roles/:roleId',
         param('roleId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(userController.removeRoleFromUser.bind(userController))
 );
 
@@ -507,7 +506,7 @@ tenantRouter.get('/:tenantId/workspaces/:workspaceId/roles',
         param('workspaceId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(roleController.getWorkspaceRoles.bind(roleController))
 );
 
@@ -519,7 +518,7 @@ tenantRouter.post('/:tenantId/workspaces/:workspaceId/roles',
         body('description').optional().isString().trim()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(roleController.createWorkspaceRole.bind(roleController))
 );
 
@@ -532,7 +531,7 @@ tenantRouter.put('/:tenantId/workspaces/:workspaceId/roles/:roleId',
         body('description').optional().isString().trim()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(roleController.updateWorkspaceRole.bind(roleController))
 );
 
@@ -541,7 +540,7 @@ tenantRouter.put('/:tenantId/workspaces/:workspaceId/roles/:roleId',
 tenantRouter.get('/:tenantId/invitations', 
     [param('tenantId').isUUID()],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(tenantController.getInvitations.bind(tenantController))
 );
 
@@ -551,7 +550,7 @@ tenantRouter.post('/:tenantId/invitations',
         body('email').isEmail()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     authenticateUser,
     asyncHandler(tenantController.createInvitation.bind(tenantController))
 );
@@ -602,7 +601,7 @@ tenantRouter.delete('/:tenantId/invitations/:id',
         param('id').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(tenantController.cancelInvitation.bind(tenantController))
 );
 
@@ -652,7 +651,7 @@ tenantRouter.post('/:tenantId/invitations/:id/resend',
         param('id').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(tenantController.resendInvitation.bind(tenantController))
 );
 
@@ -660,7 +659,7 @@ tenantRouter.post('/:tenantId/invitations/:id/resend',
 tenantRouter.get('/:tenantId/organization', 
     [param('tenantId').isUUID()],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(tenantController.getOrganization.bind(tenantController))
 );
 
@@ -670,21 +669,21 @@ tenantRouter.put('/:tenantId/organization',
         body('name').optional().isString().trim()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(tenantController.updateOrganization.bind(tenantController))
 );
 
 tenantRouter.get('/:tenantId/organization/plan', 
     [param('tenantId').isUUID()],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(tenantController.getOrganizationPlan.bind(tenantController))
 );
 
 tenantRouter.get('/:tenantId/organization/usage', 
     [param('tenantId').isUUID()],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(tenantController.getOrganizationUsage.bind(tenantController))
 );
 
@@ -699,14 +698,14 @@ tenantRouter.post('/:tenantId/customer-interactions',
         body('complete').optional().isBoolean()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.createCustomerInteraction.bind(aiController))
 );
 
 tenantRouter.get('/:tenantId/customer-interactions', 
     [param('tenantId').isUUID()],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.getCustomerInteractions.bind(aiController))
 );
 
@@ -717,7 +716,7 @@ tenantRouter.get('/:tenantId/workspaces/:workspaceId/agents',
         param('workspaceId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.getAgents.bind(aiController))
 );
 
@@ -730,7 +729,7 @@ tenantRouter.post('/:tenantId/workspaces/:workspaceId/agents',
         body('model_config').optional().isObject()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.createAgent.bind(aiController))
 );
 
@@ -741,7 +740,7 @@ tenantRouter.get('/:tenantId/workspaces/:workspaceId/agents/:agentId',
         param('agentId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.getAgent.bind(aiController))
 );
 
@@ -756,7 +755,7 @@ tenantRouter.put('/:tenantId/workspaces/:workspaceId/agents/:agentId',
         body('status').optional().isString()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.updateAgent.bind(aiController))
 );
 
@@ -767,7 +766,7 @@ tenantRouter.delete('/:tenantId/workspaces/:workspaceId/agents/:agentId',
         param('agentId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.deleteAgent.bind(aiController))
 );
 
@@ -779,7 +778,7 @@ tenantRouter.post('/:tenantId/workspaces/:workspaceId/agents/:agentId/activate',
         body('activate').isBoolean()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.activateDeactivateAgent.bind(aiController))
 );
 
@@ -790,7 +789,7 @@ tenantRouter.get('/:tenantId/workspaces/:workspaceId/knowledge-bases',
         param('workspaceId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.getKnowledgeBases.bind(aiController))
 );
 
@@ -802,7 +801,7 @@ tenantRouter.post('/:tenantId/workspaces/:workspaceId/knowledge-bases',
         body('description').optional().isString().trim()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.createKnowledgeBase.bind(aiController))
 );
 
@@ -813,7 +812,7 @@ tenantRouter.get('/:tenantId/workspaces/:workspaceId/knowledge-bases/:kbId',
         param('kbId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.getKnowledgeBase.bind(aiController))
 );
 
@@ -826,7 +825,7 @@ tenantRouter.put('/:tenantId/workspaces/:workspaceId/knowledge-bases/:kbId',
         body('description').optional().isString().trim()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.updateKnowledgeBase.bind(aiController))
 );
 
@@ -837,7 +836,7 @@ tenantRouter.delete('/:tenantId/workspaces/:workspaceId/knowledge-bases/:kbId',
         param('kbId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.deleteKnowledgeBase.bind(aiController))
 );
 
@@ -850,7 +849,7 @@ tenantRouter.post('/:tenantId/workspaces/:workspaceId/knowledge-bases/:kbId/docu
         body('content').isString().notEmpty()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.uploadDocument.bind(aiController))
 );
 
@@ -861,7 +860,7 @@ tenantRouter.get('/:tenantId/workspaces/:workspaceId/knowledge-bases/:kbId/docum
         param('kbId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.getDocuments.bind(aiController))
 );
 
@@ -873,7 +872,7 @@ tenantRouter.get('/:tenantId/workspaces/:workspaceId/knowledge-bases/:kbId/docum
         param('docId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.getDocument.bind(aiController))
 );
 
@@ -887,7 +886,7 @@ tenantRouter.put('/:tenantId/workspaces/:workspaceId/knowledge-bases/:kbId/docum
         body('content').optional().isString()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.updateDocument.bind(aiController))
 );
 
@@ -899,7 +898,7 @@ tenantRouter.delete('/:tenantId/workspaces/:workspaceId/knowledge-bases/:kbId/do
         param('docId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.deleteDocument.bind(aiController))
 );
 
@@ -910,7 +909,7 @@ tenantRouter.post('/:tenantId/workspaces/:workspaceId/agents/:agentId/train',
         param('agentId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.trainAgent.bind(aiController))
 );
 
@@ -921,7 +920,7 @@ tenantRouter.get('/:tenantId/workspaces/:workspaceId/conversations',
         param('workspaceId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(conversationController.getConversations.bind(conversationController))
 );
 
@@ -934,7 +933,7 @@ tenantRouter.post('/:tenantId/workspaces/:workspaceId/conversations',
         body('agent_id').optional().isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(conversationController.createConversation.bind(conversationController))
 );
 
@@ -945,7 +944,7 @@ tenantRouter.get('/:tenantId/workspaces/:workspaceId/conversations/:conversation
         param('conversationId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(conversationController.getConversation.bind(conversationController))
 );
 
@@ -956,7 +955,7 @@ tenantRouter.get('/:tenantId/workspaces/:workspaceId/conversations/:conversation
         param('conversationId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(conversationController.getConversationMessages.bind(conversationController))
 );
 
@@ -969,7 +968,7 @@ tenantRouter.post('/:tenantId/workspaces/:workspaceId/conversations/:conversatio
         body('content').isString().notEmpty()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(conversationController.addMessage.bind(conversationController))
 );
 
@@ -980,7 +979,7 @@ tenantRouter.get('/:tenantId/workspaces/:workspaceId/ai-settings',
         param('workspaceId').isUUID()
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.getAISettings.bind(aiController))
 );
 
@@ -994,7 +993,7 @@ tenantRouter.put('/:tenantId/workspaces/:workspaceId/ai-settings',
         body('max_tokens').optional().isInt({ min: 1 })
     ],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(aiController.updateAISettings.bind(aiController))
 );
 
@@ -1002,21 +1001,21 @@ tenantRouter.put('/:tenantId/workspaces/:workspaceId/ai-settings',
 tenantRouter.get('/:tenantId/analytics/agent-performance', 
     [param('tenantId').isUUID()],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(analyticsController.getAgentPerformance.bind(analyticsController))
 );
 
 tenantRouter.get('/:tenantId/analytics/conversation-metrics', 
     [param('tenantId').isUUID()],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(analyticsController.getConversationMetrics.bind(analyticsController))
 );
 
 tenantRouter.get('/:tenantId/audit-logs', 
     [param('tenantId').isUUID()],
     validateRequest,
-    validateTenantAccess,
+    requireTenantAccess,
     asyncHandler(analyticsController.getAuditLogs.bind(analyticsController))
 );
 
