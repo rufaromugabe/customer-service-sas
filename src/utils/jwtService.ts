@@ -161,18 +161,12 @@ export class JWTService {
      */
     static extractTokenFromHeader(req: Request): string | null {
         const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return null;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {            return null;
         }
         return authHeader.slice('Bearer '.length);
     }
 
-    /**
-     * Extract token from cookies
-     */
-    static extractTokenFromCookies(req: Request, cookieName: string): string | null {
-        return req.cookies?.[cookieName] || null;
-    }
+    // Legacy cookie extraction removed - only Bearer tokens supported
 
     /**
      * Generate token pair (access + refresh)

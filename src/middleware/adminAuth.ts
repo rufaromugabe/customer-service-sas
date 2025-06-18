@@ -16,22 +16,16 @@ export interface AdminAuthRequest extends Request {
  * JWT middleware for admin authentication
  * Verifies admin JWT tokens and adds admin data to request
  */
-export const adminJWTMiddleware = async (req: AdminAuthRequest, res: Response, next: NextFunction) => {
-  try {
+export const adminJWTMiddleware = async (req: AdminAuthRequest, res: Response, next: NextFunction) => {  try {
     const jwtSecret = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
     
-    // Get token from Authorization header or cookies
+    // Get token from Authorization header only
     let token: string | undefined;
     
-    // Priority 1: Authorization header
+    // Only accept Authorization header (Bearer token)
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.slice(7);
-    }
-    
-    // Priority 2: Cookie
-    if (!token && req.cookies.admin_access_token) {
-      token = req.cookies.admin_access_token;
     }
     
     if (!token) {
@@ -126,8 +120,9 @@ export const adminLoginRateLimit = rateLimit({
 export const adminLoginSlowDown = slowDown({
   windowMs: 15 * 60 * 1000, // 15 minutes
   delayAfter: 2, // Allow 2 requests per windowMs without delay
-  delayMs: 1000, // Add 1 second delay per request after delayAfter
+  delayMs: () => 1000, // Add 1 second delay per request after delayAfter (new v2 syntax)
   maxDelayMs: 10000, // Maximum delay of 10 seconds
+  validate: { delayMs: false }, // Disable the warning message
   // Custom key generator to include email in rate limiting
   keyGenerator: (req: Request) => {
     const ip = req.ip || req.connection.remoteAddress || 'unknown';

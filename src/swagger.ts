@@ -3,11 +3,22 @@ import swaggerUi from 'swagger-ui-express';
 
 const options = {
   definition: {
-    openapi: '3.0.0',
-    info: {
+    openapi: '3.0.0',    info: {
       title: 'AI Customer Service SaaS Backend API',
       version: '1.0.0',
-      description: 'Multi-tenant AI customer service backend with Prisma and Express',
+      description: `Multi-tenant AI customer service backend with Prisma and Express
+      
+## Authentication
+
+This API uses a universal JWT authentication system that supports both admin and user tokens:
+
+- **universalAuth**: The primary authentication method. Send JWT tokens via the Authorization header as Bearer tokens.
+  - Admin tokens: Provide access to admin-only endpoints and can access any tenant
+  - User tokens: Provide access to user endpoints within the user's authorized tenant
+  
+- **nileSession**: Nile Auth session cookies for user authentication flows
+
+For new integrations, use **universalAuth** for JWT-based authentication or **nileSession** for Nile Auth.`,
       contact: {
         name: 'API Support',
         email: 'support@example.com',
@@ -20,22 +31,11 @@ const options = {
       },
     ],    components: {
       securitySchemes: {
-        basicAuth: {
-          type: 'http',
-          scheme: 'basic',
-          description: 'Legacy basic authentication (deprecated)'
-        },
-        bearerAuth: {
+        universalAuth: {
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'JWT',
-          description: 'JWT Bearer token authentication for admin routes'
-        },
-        cookieAuth: {
-          type: 'apiKey',
-          in: 'cookie',
-          name: 'admin_access_token',
-          description: 'JWT admin authentication via secure cookie'
+          description: 'Universal JWT authentication - supports both admin and user tokens'
         },
         nileSession: {
           type: 'apiKey',

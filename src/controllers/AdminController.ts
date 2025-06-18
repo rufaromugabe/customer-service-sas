@@ -16,31 +16,11 @@ export class AdminController {
 
     private getClientInfo(req: Request) {
         const ipAddress = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'] as string;
-        const userAgent = req.headers['user-agent'];
-        return { ipAddress, userAgent };
+        const userAgent = req.headers['user-agent'];        return { ipAddress, userAgent };
     }
 
-    private setSecureCookies(res: Response, accessToken: string, refreshToken: string): void {
-        const isProduction = process.env.NODE_ENV === 'production';
-        
-        // Set access token cookie (shorter expiry)
-        res.cookie('admin_access_token', accessToken, {
-            httpOnly: true,
-            secure: isProduction,
-            sameSite: 'strict',
-            maxAge: 15 * 60 * 1000, // 15 minutes
-            path: '/api',
-        });
-
-        // Set refresh token cookie (longer expiry)
-        res.cookie('admin_refresh_token', refreshToken, {
-            httpOnly: true,
-            secure: isProduction,
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-            path: '/api',
-        });
-    }
+    // Legacy cookie methods removed - authentication now handled by JWT tokens in headers
+    // Cookies are no longer used for admin authentication
 
     getAllAdmins = async (req: Request, res: Response) => {
         try {
@@ -171,14 +151,12 @@ export class AdminController {
                 admin.email,
                 admin.role,
                 ipAddress,
-                userAgent
-            );
+                userAgent            );
 
             // Update last login
             await this.tokenService.updateAdminLastLogin(admin.id, ipAddress);
 
-            // Set secure cookies
-            this.setSecureCookies(res, tokens.accessToken, tokens.refreshToken);
+            // Cookies no longer used - authentication via JWT Bearer tokens only
 
             // Return success response
             const { password_hash, ...adminData } = admin;
@@ -197,29 +175,14 @@ export class AdminController {
                 code: 'LOGIN_ERROR'
             });
         }
-    };
-
-    logoutAdmin = async (req: RequestWithAuth, res: Response) => {
+    };    logoutAdmin = async (req: RequestWithAuth, res: Response) => {
         try {
             // Revoke tokens if we have admin context
             if (req.authAdmin) {
                 await this.tokenService.revokeAllAdminTokens(req.authAdmin.adminId);
             }
 
-            // Clear secure cookies
-            res.clearCookie('admin_access_token', { 
-                path: '/api',
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict'
-            });
-            
-            res.clearCookie('admin_refresh_token', { 
-                path: '/api',
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict'
-            });
+            // Cookies no longer used - tokens are revoked from database
 
             res.json({ 
                 message: 'Logout successful',
@@ -278,12 +241,10 @@ export class AdminController {
             // Refresh the token
             const tokens = await this.tokenService.refreshAdminToken(
                 refreshToken,
-                ipAddress,
-                userAgent
+                ipAddress,                userAgent
             );
 
-            // Set new secure cookies
-            this.setSecureCookies(res, tokens.accessToken, tokens.refreshToken);
+            // Cookies no longer used - authentication via JWT Bearer tokens only
 
             res.json({
                 message: 'Token refreshed successfully',

@@ -83,34 +83,47 @@ See [NILE_AUTH_MIGRATION.md](./NILE_AUTH_MIGRATION.md) for complete migration gu
 
 ### Testing the Endpoints (using `curl` examples)
 
-Remember to replace `<user_id>` with an actual user ID (e.g., if `REQUIRE_AUTH` is true and you've created a user) or remove the `-u` flag if `REQUIRE_AUTH=false`.
+**Authentication Methods:**
+- **JWT Admin Authentication**: Use `/api/auth/admin/login` to get tokens, then use Bearer token in Authorization header
+- **Nile User Authentication**: Use `/api/auth/signin` for user authentication with session cookies
 
-**1. Create an Organization (Tenant) - Admin API**
-(Requires `REQUIRE_AUTH=true` and a valid admin user set in `basicauth.ts` for demo)
+**1. Admin Login & Get Token**
+```bash
+# First, login as admin to get JWT token
+curl --location --request POST 'http://localhost:3001/api/auth/admin/login' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "email": "admin@example.com",
+    "password": "your-password"
+}'
+
+# Use the returned access token in subsequent requests
+```
+
+**2. Create an Organization (Tenant) - Admin API**
 ```bash
 curl --location --request POST 'http://localhost:3001/api/organizations' \
 --header 'Content-Type: application/json' \
---user 'admin@example.com:password' \
+--header 'Authorization: Bearer YOUR_ACCESS_TOKEN_HERE' \
 --data-raw '{
     "name": "My First Customer Org"
 }'
 # Note the 'id' returned for subsequent tenant-specific calls
 ```
 
-**2. Create a User (within the system, not yet assigned to tenant) - Admin API (or via OAuth)**
+**4. Create a User (within the system, not yet assigned to tenant) - Admin API**
 ```bash
 curl --location --request POST 'http://localhost:3001/api/admins' \
 --header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_ACCESS_TOKEN_HERE' \
 --data-raw '{
     "email": "testuser@example.com",
     "password": "securepassword",
     "name": "Test User"
 }'
-# Note the 'id' of the user, you'll use this for basic auth as the username
 ```
-*(For `dbAuthorizer`, the `username` is directly matched to `user.id` for simplicity. In a real app, `username` could be email and `password` would be hashed.)*
 
-**3. Add User to Tenant - Tenant API**
+**5. Add User to Tenant - Tenant API**
 (Using the organization `id` from step 1, and user `id` from step 2)
 ```bash
 curl --location --request POST 'http://localhost:3001/api/tenants/<ORGANIZATION_ID>/users' \

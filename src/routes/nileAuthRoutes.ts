@@ -27,6 +27,7 @@ const authController = new NileAuthController();
  *           example: user@example.com
  *         password:
  *           type: string
+ *           format: password
  *           example: securepassword123
  *     SignUpRequest:
  *       type: object
@@ -37,16 +38,18 @@ const authController = new NileAuthController();
  *         email:
  *           type: string
  *           format: email
- *           example: user@example.com
+ *           example: newuser@example.com
  *         password:
  *           type: string
+ *           format: password
  *           example: securepassword123
  *         name:
  *           type: string
- *           example: John Doe
+ *           example: Jane Doe
  *         tenantId:
  *           type: string
  *           format: uuid
+ *           description: Optional ID of a tenant to join upon sign-up.
  *           example: 123e4567-e89b-12d3-a456-426614174000
  */
 
@@ -54,9 +57,10 @@ const authController = new NileAuthController();
  * @swagger
  * /api/auth/signin:
  *   post:
- *     tags: [Authentication]
+ *     tags:
+ *       - Authentication
  *     summary: Sign in with email and password
- *     description: Authenticate user and create session
+ *     description: Authenticates a user and establishes a session by returning a session cookie.
  *     requestBody:
  *       required: true
  *       content:
@@ -65,7 +69,7 @@ const authController = new NileAuthController();
  *             $ref: '#/components/schemas/SignInRequest'
  *     responses:
  *       200:
- *         description: Sign in successful
+ *         description: Sign-in successful. A session cookie is set in the response headers.
  *         content:
  *           application/json:
  *             schema:
@@ -78,13 +82,13 @@ const authController = new NileAuthController();
  *                   $ref: '#/components/schemas/User'
  *         headers:
  *           Set-Cookie:
- *             description: Session cookie
+ *             description: Contains the session token (e.g., `nile-session=...; HttpOnly; Secure`).
  *             schema:
  *               type: string
  *       400:
- *         description: Bad request - missing email or password
+ *         description: Bad Request - Missing or invalid email or password format.
  *       401:
- *         description: Authentication failed - invalid credentials
+ *         description: Authentication Failed - Invalid credentials.
  */
 nileAuthRouter.post('/signin', 
     [
@@ -99,9 +103,10 @@ nileAuthRouter.post('/signin',
  * @swagger
  * /api/auth/signup:
  *   post:
- *     tags: [Authentication]
+ *     tags:
+ *       - Authentication
  *     summary: Sign up with email and password
- *     description: Create new user account and session
+ *     description: Creates a new user account and establishes a session.
  *     requestBody:
  *       required: true
  *       content:
@@ -110,7 +115,7 @@ nileAuthRouter.post('/signin',
  *             $ref: '#/components/schemas/SignUpRequest'
  *     responses:
  *       201:
- *         description: Sign up successful
+ *         description: Sign-up successful. A session cookie is set in the response headers.
  *         content:
  *           application/json:
  *             schema:
@@ -123,11 +128,11 @@ nileAuthRouter.post('/signin',
  *                   $ref: '#/components/schemas/User'
  *         headers:
  *           Set-Cookie:
- *             description: Session cookie
+ *             description: Contains the session token (e.g., `nile-session=...; HttpOnly; Secure`).
  *             schema:
  *               type: string
  *       400:
- *         description: Bad request - invalid data or user already exists
+ *         description: Bad Request - Invalid data provided or user with that email already exists.
  */
 nileAuthRouter.post('/signup', 
     [
@@ -144,12 +149,13 @@ nileAuthRouter.post('/signup',
  * @swagger
  * /api/auth/signout:
  *   post:
- *     tags: [Authentication]
+ *     tags:
+ *       - Authentication
  *     summary: Sign out
- *     description: End user session and clear cookies
+ *     description: Ends the user's session and clears the session cookie.
  *     responses:
  *       200:
- *         description: Sign out successful
+ *         description: Sign-out successful.
  *         content:
  *           application/json:
  *             schema:
@@ -167,14 +173,15 @@ nileAuthRouter.post('/signout',
  * @swagger
  * /api/auth/me:
  *   get:
- *     tags: [Authentication]
+ *     tags:
+ *       - Authentication
  *     summary: Get current user
- *     description: Get current authenticated user information
+ *     description: Gets the profile information for the currently authenticated user.
  *     security:
- *       - cookieAuth: []
+ *       - nileSession: []
  *     responses:
  *       200:
- *         description: Current user information
+ *         description: Current user information.
  *         content:
  *           application/json:
  *             schema:
@@ -184,8 +191,9 @@ nileAuthRouter.post('/signout',
  *                   $ref: '#/components/schemas/User'
  *                 session:
  *                   type: object
+ *                   description: Information about the current session.
  *       401:
- *         description: Not authenticated
+ *         description: Not authenticated.
  */
 nileAuthRouter.get('/me', 
     nileAuthMiddleware,
@@ -196,11 +204,12 @@ nileAuthRouter.get('/me',
  * @swagger
  * /api/auth/profile:
  *   put:
- *     tags: [Authentication]
+ *     tags:
+ *       - Authentication
  *     summary: Update user profile
- *     description: Update current user's profile information
+ *     description: Updates the current user's profile information (name, picture, etc.).
  *     security:
- *       - cookieAuth: []
+ *       - nileSession: []
  *     requestBody:
  *       required: true
  *       content:
@@ -210,20 +219,20 @@ nileAuthRouter.get('/me',
  *             properties:
  *               name:
  *                 type: string
- *                 example: John Doe
+ *                 example: Johnathan Doe
  *               given_name:
  *                 type: string
- *                 example: John
+ *                 example: Johnathan
  *               family_name:
  *                 type: string
  *                 example: Doe
  *               picture:
  *                 type: string
  *                 format: uri
- *                 example: https://example.com/avatar.jpg
+ *                 example: https://example.com/new-avatar.jpg
  *     responses:
  *       200:
- *         description: Profile updated successfully
+ *         description: Profile updated successfully.
  *         content:
  *           application/json:
  *             schema:
@@ -235,7 +244,7 @@ nileAuthRouter.get('/me',
  *                 user:
  *                   $ref: '#/components/schemas/User'
  *       401:
- *         description: Not authenticated
+ *         description: Not authenticated.
  */
 nileAuthRouter.put('/profile', 
     nileAuthMiddleware,
@@ -253,14 +262,15 @@ nileAuthRouter.put('/profile',
  * @swagger
  * /api/auth/tenants:
  *   get:
- *     tags: [Authentication]
+ *     tags:
+ *       - Authentication
  *     summary: Get user's tenants
- *     description: Get list of tenants the current user belongs to
+ *     description: Gets a list of tenants (organizations) that the current user is a member of.
  *     security:
- *       - cookieAuth: []
+ *       - nileSession: []
  *     responses:
  *       200:
- *         description: User's tenants
+ *         description: A list of the user's tenants.
  *         content:
  *           application/json:
  *             schema:
@@ -271,7 +281,7 @@ nileAuthRouter.put('/profile',
  *                   items:
  *                     $ref: '#/components/schemas/Tenant'
  *       401:
- *         description: Not authenticated
+ *         description: Not authenticated.
  */
 nileAuthRouter.get('/tenants', 
     nileAuthMiddleware,
@@ -282,11 +292,12 @@ nileAuthRouter.get('/tenants',
  * @swagger
  * /api/auth/tenants:
  *   post:
- *     tags: [Authentication]
- *     summary: Create tenant
- *     description: Create a new tenant organization
+ *     tags:
+ *       - Authentication
+ *     summary: Create a tenant
+ *     description: Creates a new tenant (organization) and adds the current user as a member.
  *     security:
- *       - cookieAuth: []
+ *       - nileSession: []
  *     requestBody:
  *       required: true
  *       content:
@@ -298,13 +309,13 @@ nileAuthRouter.get('/tenants',
  *             properties:
  *               name:
  *                 type: string
- *                 example: My Company
+ *                 example: My New Company
  *               description:
  *                 type: string
- *                 example: My company description
+ *                 example: A description for my new company.
  *     responses:
  *       201:
- *         description: Tenant created successfully
+ *         description: Tenant created successfully.
  *         content:
  *           application/json:
  *             schema:
@@ -316,7 +327,7 @@ nileAuthRouter.get('/tenants',
  *                 tenant:
  *                   $ref: '#/components/schemas/Tenant'
  *       401:
- *         description: Not authenticated
+ *         description: Not authenticated.
  */
 nileAuthRouter.post('/tenants', 
     nileAuthMiddleware,
@@ -334,12 +345,13 @@ nileAuthRouter.post('/tenants',
  * @swagger
  * /api/auth/google:
  *   get:
- *     tags: [Authentication]
- *     summary: Google OAuth (placeholder)
- *     description: Initiate Google OAuth flow
+ *     tags:
+ *       - Authentication
+ *     summary: Google OAuth (Not Implemented)
+ *     description: Placeholder to initiate the Google OAuth flow.
  *     responses:
  *       501:
- *         description: Not implemented yet
+ *         description: Not Implemented.
  */
 nileAuthRouter.get('/google', 
     asyncHandler(authController.googleAuth.bind(authController))
@@ -349,12 +361,13 @@ nileAuthRouter.get('/google',
  * @swagger
  * /api/auth/github:
  *   get:
- *     tags: [Authentication]
- *     summary: GitHub OAuth (placeholder)
- *     description: Initiate GitHub OAuth flow
+ *     tags:
+ *       - Authentication
+ *     summary: GitHub OAuth (Not Implemented)
+ *     description: Placeholder to initiate the GitHub OAuth flow.
  *     responses:
  *       501:
- *         description: Not implemented yet
+ *         description: Not Implemented.
  */
 nileAuthRouter.get('/github', 
     asyncHandler(authController.githubAuth.bind(authController))
@@ -364,9 +377,10 @@ nileAuthRouter.get('/github',
  * @swagger
  * /api/auth/magic-link:
  *   post:
- *     tags: [Authentication]
- *     summary: Magic link (placeholder)
- *     description: Send magic link for passwordless authentication
+ *     tags:
+ *       - Authentication
+ *     summary: Magic link sign-in (Not Implemented)
+ *     description: Placeholder to send a magic link for passwordless authentication.
  *     requestBody:
  *       required: true
  *       content:
@@ -382,7 +396,7 @@ nileAuthRouter.get('/github',
  *                 example: user@example.com
  *     responses:
  *       501:
- *         description: Not implemented yet
+ *         description: Not Implemented.
  */
 nileAuthRouter.post('/magic-link', 
     [

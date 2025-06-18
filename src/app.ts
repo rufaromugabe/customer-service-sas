@@ -1,9 +1,7 @@
 import express from 'express';
 import { Prisma, PrismaClient } from '@prisma/client';
-import expressBasicAuth from 'express-basic-auth';
 import cookieParser from 'cookie-parser';
 import { tenantContext } from './storage.ts';
-import { dbAuthorizer, getUnauthorizedResponse, REQUIRE_AUTH } from './basicauth.ts';
 import dotenv from 'dotenv';
 import adminRoutes from './routes/adminRoutes.ts';
 import tenantRoutes from './routes/tenantRoutes.ts';
@@ -113,23 +111,6 @@ app.use((req, res, next) => {
     next(error);
   }
 });
-
-// Apply basic auth middleware if required, after tenant context is set
-console.log(`REQUIRE_AUTH is set to: ${REQUIRE_AUTH}`);
-if (REQUIRE_AUTH) {
-  console.log('Setting up basic auth middleware...');
-  app.use(
-    expressBasicAuth({
-      authorizer: dbAuthorizer,
-      authorizeAsync: true,
-      unauthorizedResponse: getUnauthorizedResponse
-      // Note: exclude option is not available in express-basic-auth
-      // You would need to conditionally apply the middleware to specific routes instead
-    })
-  );
-} else {
-  console.log('Basic auth is disabled');
-}
 
 // --- API Routes ---
 console.log('Setting up API routes...');

@@ -15,35 +15,14 @@ export class AuthController {
         this.tenantDB = tenantDB;
         this.userService = new UserService(tenantDB);
         this.tokenService = new TokenService(tenantDB);
-    }
-
-    private getClientInfo(req: Request) {
+    }    private getClientInfo(req: Request) {
         const ipAddress = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'] as string;
         const userAgent = req.headers['user-agent'];
         return { ipAddress, userAgent };
     }
 
-    private setSecureCookies(res: Response, accessToken: string, refreshToken: string): void {
-        const isProduction = process.env.NODE_ENV === 'production';
-        
-        // Set access token cookie (shorter expiry)
-        res.cookie('access_token', accessToken, {
-            httpOnly: true,
-            secure: isProduction,
-            sameSite: 'strict',
-            maxAge: 15 * 60 * 1000, // 15 minutes
-            path: '/api',
-        });
-
-        // Set refresh token cookie (longer expiry)
-        res.cookie('refresh_token', refreshToken, {
-            httpOnly: true,
-            secure: isProduction,
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-            path: '/api',
-        });
-    }
+    // Legacy cookie methods removed - authentication now handled by JWT tokens in headers
+    // Cookies are no longer used for user authentication
 
     /**
      * Register a new user (for systems that allow self-registration)
@@ -87,12 +66,10 @@ export class AuthController {
             const tokens = JWTService.generateTokenPair({
                 userId: user.id,
                 email: user.email!,
-                role: 'user',
-                jti
+                role: 'user',                jti
             });
 
-            // Set secure cookies
-            this.setSecureCookies(res, tokens.accessToken, tokens.refreshToken);
+            // Cookies no longer used - authentication via JWT Bearer tokens only
 
             res.status(201).json({
                 message: 'Registration successful',
@@ -164,12 +141,10 @@ export class AuthController {
             const tokens = JWTService.generateTokenPair({
                 userId: user.id,
                 email: user.email!,
-                role: 'user',
-                jti
+                role: 'user',                jti
             });
 
-            // Set secure cookies
-            this.setSecureCookies(res, tokens.accessToken, tokens.refreshToken);
+            // Cookies no longer used - authentication via JWT Bearer tokens only
 
             res.json({
                 message: 'Login successful',
@@ -196,24 +171,10 @@ export class AuthController {
     };
 
     /**
-     * Logout user
-     */
+     * Logout user     */
     logout = async (req: RequestWithAuth, res: Response) => {
         try {
-            // Clear secure cookies
-            res.clearCookie('access_token', {
-                path: '/api',
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict'
-            });
-
-            res.clearCookie('refresh_token', {
-                path: '/api',
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict'
-            });
+            // Cookies no longer used - tokens are managed server-side
 
             res.json({
                 message: 'Logout successful',
@@ -267,14 +228,12 @@ export class AuthController {
                 message: 'Unable to get user profile'
             });
         }
-    };
-
-    /**
+    };    /**
      * Refresh user token
      */
     refreshToken = async (req: Request, res: Response) => {
         try {
-            const refreshToken = req.cookies?.refresh_token || req.body.refreshToken;
+            const refreshToken = req.body.refreshToken; // Only accept from request body now
             
             if (!refreshToken) {
                 return res.status(401).json({
@@ -306,13 +265,11 @@ export class AuthController {
             const jti = uuidv4();
             const tokens = JWTService.generateTokenPair({
                 userId: user.id,
-                email: user.email!,
-                role: 'user',
+                email: user.email!,                role: 'user',
                 jti
             });
 
-            // Set new secure cookies
-            this.setSecureCookies(res, tokens.accessToken, tokens.refreshToken);
+            // Cookies no longer used - authentication via JWT Bearer tokens only
 
             res.json({
                 message: 'Token refreshed successfully',
